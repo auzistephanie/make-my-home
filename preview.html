@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裝修無伏 App 升級 — UI Preview（Mockup）</title>
+<style>
+:root{
+  --bg:#FAF6EF; --card:#FFF; --ink:#2D2A26; --ink2:#6B645B; --muted:#9A917F;
+  --accent:#C4622D; --accent-soft:#F3DFD2; --green:#3E5C50; --green-soft:#E3EAE6;
+  --mustard:#D9A441; --line:#E8E0D2; --danger:#A8402F; --danger-soft:#F6E3DF;
+  --radius:14px; --shadow:0 2px 10px rgba(45,42,38,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang HK",sans-serif;background:#EFE9DD;color:var(--ink);line-height:1.6}
+.bar{position:sticky;top:0;z-index:99;background:var(--ink);color:#FAF6EF;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar b{font-size:.9rem;margin-right:8px}
+.bar button{border:none;border-radius:999px;padding:7px 16px;font-size:.85rem;cursor:pointer;font-family:inherit;background:rgba(250,246,239,.15);color:#FAF6EF}
+.bar button.on{background:var(--accent);font-weight:700}
+.stage{max-width:920px;margin:22px auto 80px;padding:0 16px}
+.scr{display:none}.scr.on{display:block}
+.phone{background:var(--bg);border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 30px rgba(45,42,38,.15);overflow:hidden;margin-bottom:26px}
+.mocktag{display:inline-block;background:var(--mustard);color:#3A2E12;font-size:.72rem;font-weight:700;border-radius:6px;padding:2px 10px;letter-spacing:.08em;margin-bottom:8px}
+h2.cap{font-size:1.05rem;margin:6px 0 10px;color:var(--green)}
+p.capsub{font-size:.85rem;color:var(--ink2);margin-bottom:12px}
+/* app chrome */
+.apphead{background:var(--green);color:#FAF6EF;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.apphead .lg{font-weight:800;letter-spacing:.05em}
+.apphead .lg small{display:block;font-size:.65rem;font-weight:400;opacity:.75;letter-spacing:.12em}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--mustard);color:#3A2E12;display:flex;align-items:center;justify-content:center;font-weight:800}
+.projrow{background:#33493F;color:#E9EFE9;padding:8px 18px;font-size:.82rem;display:flex;gap:8px;align-items:center}
+.projrow select{background:transparent;color:#FAF6EF;border:1px solid rgba(250,246,239,.4);border-radius:8px;padding:3px 8px;font-family:inherit;font-size:.82rem}
+.body{padding:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card h3{font-size:.98rem;margin-bottom:8px}
+.pill{display:inline-block;border-radius:999px;padding:2px 11px;font-size:.74rem;font-weight:700;margin-right:6px}
+.pill.g{background:var(--green-soft);color:var(--green)}
+.pill.o{background:var(--accent-soft);color:var(--accent)}
+.pill.r{background:var(--danger-soft);color:var(--danger)}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit}
+.btn.gh{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.gbtn{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 20px;font-size:.95rem;font-weight:600;cursor:pointer;margin:0 auto;font-family:inherit}
+.gbtn .gi{width:20px;height:20px;border-radius:50%;background:conic-gradient(#4285F4 0 25%,#34A853 25% 50%,#FBBC05 50% 75%,#EA4335 75%);}
+input[type=text],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font-size:.88rem;font-family:inherit;background:#FFFDF9}
+label.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:8px 0 3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.roomtab{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+.roomtab span{flex:0 0 auto;border-radius:999px;padding:6px 14px;font-size:.82rem;background:#F1EADB;color:var(--ink2);cursor:pointer}
+.roomtab span.on{background:var(--green);color:#FAF6EF;font-weight:700}
+.stepdots{display:flex;gap:5px;margin:10px 0}
+.stepdots i{width:22px;height:5px;border-radius:3px;background:var(--line)}
+.stepdots i.on{background:var(--accent)}
+.counter{display:flex;align-items:center;gap:10px}
+.counter b{min-width:22px;text-align:center}
+.counter button{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--accent);background:#fff;color:var(--accent);font-size:1.05rem;cursor:pointer}
+table.tb{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:6px}
+table.tb th{text-align:left;padding:7px 8px;background:var(--green-soft);color:var(--green);font-size:.76rem}
+table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:top}
+.qcard{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;background:#FFFDF9}
+.qcard .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.qcard .hd b{font-size:.95rem}
+.qcard .price{font-size:1.05rem;font-weight:800;color:var(--green)}
+.score{font-size:.78rem;font-weight:700}
+.bar2{height:7px;border-radius:99px;background:#F1EADB;overflow:hidden;margin:4px 0 8px}
+.bar2 i{display:block;height:100%;border-radius:99px}
+.flagrow{font-size:.78rem;color:var(--ink2)}
+.stgcard{border-left:5px solid var(--line);border-radius:10px;background:#FFFDF9;border:1px solid var(--line);padding:12px 14px;margin-bottom:10px}
+.stgcard.done{border-left-color:var(--green)}
+.stgcard.now{border-left-color:var(--accent)}
+.stgcard .t{display:flex;justify-content:space-between;align-items:center}
+.stgcard .t b{font-size:.92rem}
+.dt{font-size:.76rem;color:var(--ink2);margin-top:3px}
+.photos{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ph{width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,#D8CDB8,#B8AD96);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.ph.add{background:#fff;border:1.5px dashed var(--accent);color:var(--accent);cursor:pointer}
+.note{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:.82rem;margin:10px 0}
+.note.good{background:var(--green-soft);border-left-color:var(--green)}
+/* landing */
+.land{background:#22352E;color:#F5EFE2;text-align:center;padding:60px 24px 50px;position:relative;overflow:hidden}
+.tiles{position:absolute;inset:0;opacity:.16;background-image:
+ radial-gradient(circle at 50% 50%, transparent 30%, #D9A441 30% 34%, transparent 34%),
+ conic-gradient(from 45deg at 50% 50%, #C4622D 0 25%, transparent 0 50%, #C4622D 0 75%, transparent 0);
+ background-size:72px 72px}
+.land h1{font-size:2.1rem;letter-spacing:.1em;position:relative}
+.land .en{font-size:.8rem;letter-spacing:.35em;opacity:.7;margin-top:6px;position:relative}
+.land p.tag{margin:16px auto 0;max-width:430px;font-size:.95rem;opacity:.9;position:relative}
+.land .cta{margin-top:24px;position:relative}
+.land .cta .btn{background:var(--mustard);color:#3A2E12;margin:0 6px}
+.landsec{padding:26px 22px;text-align:center;border-top:1px solid var(--line)}
+.landsec h4{color:var(--green);margin-bottom:6px}
+.landsec p{font-size:.85rem;color:var(--ink2);max-width:480px;margin:0 auto}
+.freechips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.freechips span{background:var(--green-soft);color:var(--green);border-radius:999px;padding:5px 14px;font-size:.8rem;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <b>🔍 UI PREVIEW（假數據 mockup）</b>
+  <button data-s="s-land" class="on">① Landing</button>
+  <button data-s="s-login">② 登入</button>
+  <button data-s="s-home">③ Dashboard</button>
+  <button data-s="s-need">④ 需求+電掣</button>
+  <button data-s="s-quote">⑤ 報價比較</button>
+  <button data-s="s-insp">⑥ 施工驗收</button>
+</div>
+
+<div class="stage">
+
+<!-- ① Landing -->
+<div class="scr on" id="s-land">
+  <span class="mocktag">MOCKUP · 未係成品</span>
+  <h2 class="cap">① Landing Page — 復古花磚 scroll journey（示意頭兩幕）</h2>
+  <p class="capsub">正式版會用 brand-landing-page skill 做完整 scroll journey：花磚圖騰、parallax、每幕一個色調場景。免登入內容（計算器/伏位/字典）全部放呢度。</p>
+  <div class="phone">
+    <div class="land">
+      <div class="tiles"></div>
+      <h1>裝修無伏</h1>
+      <div class="en">M A K E M Y H O M E</div>
+      <p class="tag">香港裝修新手嘅全程管家 —<br>要預幾耐・點同設計師傾・點樣驗收，一個 app 搞掂</p>
+      <div class="cta">
+        <button class="btn">免費開始 →</button>
+        <button class="btn" style="background:transparent;color:#F5EFE2;border:1.5px solid rgba(245,239,226,.5)">先試下計算器</button>
+      </div>
+    </div>
+    <div class="landsec" style="background:var(--bg)">
+      <h4>唔使登入都用到</h4>
+      <p>教學內容全部免費開放，覺得有用先開戶口儲低你嘅裝修計劃。</p>
+      <div class="freechips">
+        <span>📅 工期計算器</span><span>💰 預算計算器</span><span>🧭 裝修旅程</span><span>⚠️ 伏位警示</span><span>📖 術語字典</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ② Login -->
+<div class="scr" id="s-login">
+  <span class="mocktag">MOCKUP</span>
+  <h2 class="cap">② 登入 — 得一個掣，零門檻</h2>
+  <p class="capsub">Supabase Google OAuth。登入後資料全部入雲端，換機/手機電腦互通。</p>
+  <div class="phone">
+    <div class="body" style="text-align:center;padding:56px 24px">
+      <div style="font-size:2.2rem">🏠</div>
+      <h3 style="font-size:1.3rem;color:var(--green);margin:8px 0 4px">裝修無伏</h3>
+      <p style="font-size:.85rem;color:var(--ink2);margin-bottom:26px">儲存你嘅裝修計劃・報價比較・驗收記錄</p>
+      <button class="gbtn"><span class="gi"></span>用 Google 帳戶繼續</button>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:18px">我哋只攞你個 email 做登入，唔會 send 嘢俾你</p>
+    </div>
+  </div>
+</div>
+
+<!-- ③ Dashboard -->
+<div class="scr" id="s-home">
+  <span class="mocktag">MOCKUP</span>
+  <h2 class="cap">③ 登入後 Dashboard — 一個 project 一眼睇晒進度</h2>
+  <p class="capsub">支援多 project（幫屋企人裝修）。四個 module 顯示各自進度，接落做咩一目了然。</p>
+  <div class="phone">
+    <div class="apphead"><div class="lg">裝修無伏<small>MAKEMYHOME</small></div><div class="avatar">S</div></div>
+    <div class="projrow">🏠 Project：<select><option>太古城 480呎（自住）</option><option>+ 開新 project</option></select></div>
+    <div class="body">
+      <div class="card" style="border-left:5px solid var(--accent)">
+        <span class="pill o">而家階段</span><b style="font-size:.95rem">施工中 — 泥水鋪磚（第 3 週）</b>
+        <div class="dt" style="margin-top:6px">📍 下一個關鍵位：<b>10月2日前</b> 完成 48 小時試水＋泥水驗收 ②</div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>📋 需求規劃</h3><span class="pill g">已完成</span><div class="dt">5 間房・掣位清單已 export</div></div>
+        <div class="card"><h3>📊 報價比較</h3><span class="pill g">已簽約</span><div class="dt">3 間公司・簽咗「安居工程」</div></div>
+        <div class="card"><h3>📅 工期表</h3><span class="pill o">進行中</span><div class="dt">9月1日開工・預 10月28日完工</div></div>
+        <div class="card"><h3>✅ 驗收記錄</h3><span class="pill o">2/5 工序</span><div class="dt">已上載 14 張相</div></div>
+      </div>
+      <div class="note">🔔 提提你：訂造傢俬圖則要喺 <b>9月20日前</b>確認落單（木工前 6 星期）</div>
+    </div>
+  </div>
+</div>
+
+<!-- ④ 需求+電掣 -->
+<div class="scr" id="s-need">
+  <span class="mocktag">MOCKUP</span>
+  <h2 class="cap">④ 需求規劃 — 逐間房問卷，電掣位係第 3 步</h2>
+  <p class="capsub">揀咗房間之後逐間過，每間房 4 步：用途傢俬 → 儲物 → 電掣插座 → 燈光。最後匯總成需求書＋掣位清單。</p>
+  <div class="phone">
+    <div class="apphead"><div class="lg">📋 需求規劃</div><div class="avatar">S</div></div>
+    <div class="body">
+      <div class="roomtab"><span>客飯廳</span><span class="on">主人房</span><span>細房</span><span>廚房</span><span>浴室</span></div>
+      <div class="card">
+        <div class="stepdots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+        <h3>主人房 · 第 3 步：電掣＋插座＋網絡位 🔌</h3>
+        <label class="f">床頭兩邊插座（叉電話）</label>
+        <div class="counter"><button>−</button><b>2</b><button>＋</button><span style="font-size:.78rem;color:var(--muted)">建議每邊最少 1 個＋USB 位</span></div>
+        <label class="f">電視/娛樂區插座</label>
+        <div class="counter"><button>−</button><b>4</b><button>＋</button><span style="font-size:.78rem;color:var(--muted)">電視+機頂盒+遊戲機+router</span></div>
+        <label class="f">冷氣位</label>
+        <div class="counter"><button>−</button><b>1</b><button>＋</button><span style="font-size:.78rem;color:var(--muted)">獨立迴路，唔同插座共用</span></div>
+        <label class="f">網絡 LAN 位 / Wi-Fi mesh 位</label>
+        <div class="counter"><button>−</button><b>1</b><button>＋</button><span style="font-size:.78rem;color:var(--muted)">在家工作建議書枱位有 LAN</span></div>
+        <label class="f">呢間房仲有咩特別電器？</label>
+        <input type="text" placeholder="例：抽濕機、風扇燈、電熱氈…">
+        <div style="margin-top:12px"><button class="btn gh">← 上一步</button> <button class="btn">下一步：燈光 →</button></div>
+      </div>
+      <div class="note good">✨ 最後一步自動生成：<b>需求書</b>（畀設計師）＋<b>全屋掣位清單</b>（畀水電師傅，逐房列明數量+建議高度）— 兩份都可以 export PDF / WhatsApp 傳送</div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ 報價比較 -->
+<div class="scr" id="s-quote">
+  <span class="mocktag">MOCKUP</span>
+  <h2 class="cap">⑤ 報價比較 — 公司卡片＋紅旗評分</h2>
+  <p class="capsub">每間公司入總價＋工序大類金額＋剔 10 條紅旗問題，自動出對比＋風險提示。可上載報價單原件備查。</p>
+  <div class="phone">
+    <div class="apphead"><div class="lg">📊 報價比較</div><div class="avatar">S</div></div>
+    <div class="body">
+      <div class="qcard">
+        <div class="hd"><b>安居工程</b><span class="price">$428,000</span></div>
+        <div class="bar2"><i style="width:88%;background:var(--green)"></i></div>
+        <div class="flagrow"><span class="score" style="color:var(--green)">風險評分 9/10 ✓</span> · 逐項列品牌型號 ✓ · 分 4 期 ✓ · 雜項 3% ✓ · 📎 報價單.pdf</div>
+      </div>
+      <div class="qcard">
+        <div class="hd"><b>宏基裝修</b><span class="price">$452,000</span></div>
+        <div class="bar2"><i style="width:70%;background:var(--mustard)"></i></div>
+        <div class="flagrow"><span class="score" style="color:#8A6A1B">風險評分 7/10</span> · 冇列磁磚型號 ⚠️ · 分 4 期 ✓ · 雜項 6% ⚠️</div>
+      </div>
+      <div class="qcard" style="border-color:var(--danger)">
+        <div class="hd"><b>快靚正工程</b><span class="price" style="color:var(--danger)">$318,000</span></div>
+        <div class="bar2"><i style="width:35%;background:var(--danger)"></i></div>
+        <div class="flagrow"><span class="score" style="color:var(--danger)">風險評分 3/10 ✗</span> · 平市價 26% 🚩 · 一口價冇分項 🚩 · 開工收 50% 🚩</div>
+      </div>
+      <table class="tb">
+        <tr><th>大類</th><th>安居</th><th>宏基</th><th>快靚正</th></tr>
+        <tr><td>泥水</td><td>$128k</td><td>$135k</td><td rowspan="4" style="color:var(--danger)">冇分項<br>🚩</td></tr>
+        <tr><td>水電</td><td>$86k</td><td>$92k</td></tr>
+        <tr><td>木工</td><td>$142k</td><td>$150k</td></tr>
+        <tr><td>油漆+雜項</td><td>$72k</td><td>$75k</td></tr>
+      </table>
+      <div style="margin-top:12px"><button class="btn gh">＋ 加公司</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑥ 施工驗收 -->
+<div class="scr" id="s-insp">
+  <span class="mocktag">MOCKUP</span>
+  <h2 class="cap">⑥ 施工＋分段驗收 — mark 日期・剔清單・影相留證</h2>
+  <p class="capsub">每個工序一張卡：日期、驗收 checklist（雲端保存）、相簿＋備註。相片自動壓縮，唔食晒儲存額。</p>
+  <div class="phone">
+    <div class="apphead"><div class="lg">✅ 施工驗收</div><div class="avatar">S</div></div>
+    <div class="body">
+      <div class="stgcard done">
+        <div class="t"><b>1. 保護＋拆卸</b><span class="pill g">完成 ✓</span></div>
+        <div class="dt">9月1日 開工 → 9月5日 完成 · 📷 3 張相</div>
+      </div>
+      <div class="stgcard done">
+        <div class="t"><b>2. 水電改動</b><span class="pill g">驗收合格 ✓</span></div>
+        <div class="dt">9月6日 → 9月13日 · checklist 6/6 ✓ · 已付第 2 期</div>
+        <div class="photos"><div class="ph">📷</div><div class="ph">📷</div><div class="ph">📷</div><div class="ph">📷</div></div>
+        <div class="dt" style="margin-top:5px">💬 備注：全屋走線相已影，主人房加咗一個 LAN 位（+$800 已書面確認）</div>
+      </div>
+      <div class="stgcard now">
+        <div class="t"><b>3. 泥水鋪磚</b><span class="pill o">進行中</span></div>
+        <div class="dt">9月14日 開工 · 預 10月2日 完成 · checklist 2/6</div>
+        <div class="photos"><div class="ph">📷</div><div class="ph">📷</div><div class="ph add">＋</div></div>
+        <div class="note" style="margin:8px 0 0">⏱️ 記住：完成前要 <b>48 小時試水</b>，合格先剔「驗收②」同過第 3 期數</div>
+      </div>
+      <div class="stgcard">
+        <div class="t"><b>4. 木工訂造</b><span class="pill" style="background:#F1EADB;color:var(--muted)">未開始</span></div>
+        <div class="dt">傢俬圖則要 9月20日前 確認 🔔</div>
+      </div>
+      <div class="stgcard">
+        <div class="t"><b>5. 油漆＋完工總驗收</b><span class="pill" style="background:#F1EADB;color:var(--muted)">未開始</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelector('.bar').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('.bar button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+  window.scrollTo({top:0});
+});
+</script>
+</body>
+</html>

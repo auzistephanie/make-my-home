@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裝修無伏 — 香港裝修新手指南</title>
+<style>
+:root{
+  --bg:#FAF6EF; --card:#FFFFFF; --ink:#2D2A26; --ink2:#6B645B; --muted:#9A917F;
+  --accent:#C4622D; --accent-soft:#F3DFD2; --green:#3E5C50; --green-soft:#E3EAE6;
+  --mustard:#D9A441; --line:#E8E0D2; --danger:#A8402F; --danger-soft:#F6E3DF;
+  --radius:14px; --shadow:0 2px 10px rgba(45,42,38,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang HK",sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 80px}
+header.hero{background:linear-gradient(160deg,#3E5C50 0%,#2F4A40 100%);color:#FAF6EF;padding:44px 20px 36px;text-align:center;position:relative;overflow:hidden}
+header.hero::before{content:"";position:absolute;inset:0;opacity:.08;background-image:radial-gradient(circle at 25% 25%,#FAF6EF 2px,transparent 2.5px);background-size:26px 26px}
+header.hero h1{font-size:2rem;letter-spacing:.06em;position:relative}
+header.hero p{margin-top:10px;opacity:.85;font-size:.95rem;position:relative}
+header.hero .badge{display:inline-block;margin-top:14px;background:rgba(250,246,239,.15);border:1px solid rgba(250,246,239,.35);border-radius:999px;padding:4px 14px;font-size:.8rem;position:relative}
+nav.tabs{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:2px solid var(--line);display:flex;overflow-x:auto;gap:2px;padding:8px 12px;-webkit-overflow-scrolling:touch}
+nav.tabs button{flex:0 0 auto;border:none;background:transparent;padding:9px 14px;border-radius:10px;font-size:.92rem;color:var(--ink2);cursor:pointer;white-space:nowrap;font-family:inherit}
+nav.tabs button.active{background:var(--green);color:#FAF6EF;font-weight:600}
+nav.tabs button:hover:not(.active){background:var(--green-soft)}
+section.panel{display:none;padding-top:26px}
+section.panel.active{display:block}
+h2.sec{font-size:1.4rem;margin-bottom:4px;color:var(--green)}
+p.sub{color:var(--ink2);margin-bottom:20px;font-size:.93rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+.card h3{font-size:1.05rem;margin-bottom:10px;color:var(--ink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+label.f{display:block;font-size:.85rem;color:var(--ink2);margin-bottom:4px;font-weight:600}
+select,input[type=number],input[type=date],input[type=text],textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:.95rem;font-family:inherit;background:#FFFDF9;color:var(--ink)}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 26px;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:14px}
+.btn:hover{background:#A9521F}
+.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.hero-num{background:var(--green);color:#FAF6EF;border-radius:var(--radius);padding:22px;text-align:center;margin:18px 0}
+.hero-num .n{font-size:2.2rem;font-weight:700;letter-spacing:.02em}
+.hero-num .l{font-size:.85rem;opacity:.85;margin-top:2px}
+.gantt{margin-top:6px}
+.gantt .row{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.gantt .row:last-child{border-bottom:none}
+.gantt .nm{font-size:.88rem;color:var(--ink)}
+.gantt .nm small{display:block;color:var(--muted);font-size:.75rem}
+.gantt .track{position:relative;height:22px;background:#F4EEE2;border-radius:6px}
+.gantt .bar{position:absolute;top:3px;bottom:3px;background:var(--accent);border-radius:5px;min-width:8px}
+.gantt .bar span{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--ink2);white-space:nowrap}
+.gantt .bar.pre{background:var(--mustard)}
+.gantt .bar.end span{left:auto;right:calc(100% + 8px)}
+.note{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:12px 14px;font-size:.9rem;margin:12px 0}
+.note.warn{background:var(--danger-soft);border-left-color:var(--danger)}
+.note.good{background:var(--green-soft);border-left-color:var(--green)}
+.reminder{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.reminder:last-child{border-bottom:none}
+.reminder .d{flex:0 0 auto;background:var(--green);color:#FAF6EF;border-radius:8px;padding:3px 10px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.journey{display:flex;flex-direction:column;gap:0;margin-top:10px}
+.jstep{display:grid;grid-template-columns:44px 1fr;gap:14px;position:relative;padding-bottom:22px}
+.jstep::before{content:"";position:absolute;left:21px;top:44px;bottom:0;width:2px;background:var(--line)}
+.jstep:last-child::before{display:none}
+.jstep .dot{width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;border:2px solid var(--green)}
+.jstep .bd h3{font-size:1rem;margin-bottom:4px}
+.jstep .bd p{font-size:.88rem;color:var(--ink2)}
+.jstep .bd .tip{font-size:.82rem;color:var(--accent);margin-top:4px;font-weight:600}
+.chk{list-style:none}
+.chk li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.92rem;cursor:pointer}
+.chk li:last-child{border-bottom:none}
+.chk input[type=checkbox]{width:19px;height:19px;margin-top:3px;accent-color:var(--green);flex:0 0 auto;cursor:pointer}
+.chk li.done{color:var(--muted);text-decoration:line-through}
+.chk li b{font-weight:600}
+.chk li small{display:block;color:var(--ink2);font-size:.8rem;text-decoration:none}
+.prog{height:10px;background:#F4EEE2;border-radius:999px;overflow:hidden;margin:8px 0 4px}
+.prog>div{height:100%;background:var(--green);border-radius:999px;transition:width .3s}
+.prog-label{font-size:.8rem;color:var(--ink2);text-align:right}
+details.acc{border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:10px;overflow:hidden}
+details.acc summary{padding:14px 18px;cursor:pointer;font-weight:600;font-size:.98rem;list-style:none;display:flex;justify-content:space-between;align-items:center;background:#FFFDF9}
+details.acc summary::after{content:"＋";color:var(--accent);font-size:1.1rem}
+details.acc[open] summary::after{content:"－"}
+details.acc .inner{padding:4px 18px 16px;border-top:1px dashed var(--line)}
+.pill{display:inline-block;background:var(--green-soft);color:var(--green);border-radius:999px;padding:2px 12px;font-size:.78rem;font-weight:600;margin-right:6px}
+.pill.red{background:var(--danger-soft);color:var(--danger)}
+.pill.org{background:var(--accent-soft);color:var(--accent)}
+table.tb{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:8px}
+table.tb th{text-align:left;padding:8px 10px;background:var(--green-soft);color:var(--green);font-size:.82rem}
+table.tb td{padding:8px 10px;border-bottom:1px dashed var(--line);vertical-align:top}
+table.tb tr:last-child td{border-bottom:none}
+.dict{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.dict{grid-template-columns:1fr}}
+.dict .term{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.dict .term b{color:var(--accent)}
+.dict .term p{font-size:.85rem;color:var(--ink2);margin-top:3px}
+.copybox{background:#FFFDF9;border:1.5px dashed var(--accent);border-radius:12px;padding:16px;font-size:.9rem;white-space:pre-wrap;margin-top:14px;display:none}
+.footer-note{text-align:center;color:var(--muted);font-size:.78rem;margin-top:40px;line-height:1.8}
+.searchbar{margin-bottom:14px}
+.trap{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--line)}
+.trap:last-child{border-bottom:none}
+.trap .ic{flex:0 0 34px;height:34px;border-radius:50%;background:var(--danger-soft);color:var(--danger);display:flex;align-items:center;justify-content:center;font-weight:700}
+.trap b{display:block;font-size:.95rem}
+.trap p{font-size:.86rem;color:var(--ink2)}
+.trap .how{font-size:.82rem;color:var(--green);font-weight:600;margin-top:3px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>裝修無伏</h1>
+  <p>香港裝修新手全程指南 — 要預幾耐・點同設計師傾・點樣驗收</p>
+  <span class="badge">參考《香港裝修指引》及消委會建議整理</span>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-t="journey" class="active">🧭 裝修旅程</button>
+  <button data-t="timeline">📅 工期計算</button>
+  <button data-t="budget">💰 預算計算</button>
+  <button data-t="talk">🗣️ 同設計師溝通</button>
+  <button data-t="inspect">✅ 驗收清單</button>
+  <button data-t="traps">⚠️ 伏位警示</button>
+  <button data-t="dict">📖 術語字典</button>
+</nav>
+
+<div class="wrap">
+
+<!-- ================= 旅程 ================= -->
+<section class="panel active" id="p-journey">
+  <h2 class="sec">裝修旅程地圖</h2>
+  <p class="sub">由「諗緊」到「入伙」七個階段。新手最大鑊唔係做錯，係唔知下一步做咩。跟住呢條路行就唔會漏。</p>
+  <div class="card">
+    <div class="journey">
+      <div class="jstep"><div class="dot">1</div><div class="bd">
+        <h3>諗清楚需求（開工前 3–6 個月）</h3>
+        <p>全屋定局部？住幾多人？儲存量要幾大？留低所有靈感圖（IG/Pinterest 截圖），諗埋 5 年後嘅生活變化（BB？在家工作？）。</p>
+        <p class="tip">→ 用「同設計師溝通」入面嘅 Brief 生成器整理諗法</p>
+      </div></div>
+      <div class="jstep"><div class="dot">2</div><div class="bd">
+        <h3>定預算（開工前 3–4 個月）</h3>
+        <p>計清楚上限，另外預 10–15% 應急錢（拆開牆先發現嘅問題、加減工程）。切記唔好將應急錢當預算使。</p>
+        <p class="tip">→ 用「預算計算」估個大概範圍</p>
+      </div></div>
+      <div class="jstep"><div class="dot">3</div><div class="bd">
+        <h3>搵設計師／裝修公司（開工前 2–3 個月）</h3>
+        <p>最少搵 3 間報價。查商業登記、睇實體完工案例（唔好淨睇相）、問返舊客感受。設計師 vs 直接搵裝修公司：前者貴 10–20% 但有人幫你把關。</p>
+        <p class="tip">→ 睇「同設計師溝通」嘅必問 10 條</p>
+      </div></div>
+      <div class="jstep"><div class="dot">4</div><div class="bd">
+        <h3>比較報價・簽約（開工前 1–2 個月）</h3>
+        <p>報價單要逐項列明：工序、物料品牌型號、數量、單價。「一口價」「雜項」佔比高係危險訊號。付款最少分 4 期，尾數留到驗收合格先過。</p>
+        <p class="tip">→ 睇「伏位警示」嘅 11 大報價陷阱</p>
+      </div></div>
+      <div class="jstep"><div class="dot">5</div><div class="bd">
+        <h3>開工前準備（開工前 2–4 星期）</h3>
+        <p>通知管理處攞裝修許可（部分屋苑要按金＋批圖）、通知鄰居、影低單位交吉狀態、確認水電煤戶口。長 lead time 物料（磁磚、潔具、訂造傢俬）呢個時候要落訂。</p>
+        <p class="tip">→ 「工期計算」會幫你倒數幾時要訂料</p>
+      </div></div>
+      <div class="jstep"><div class="dot">6</div><div class="bd">
+        <h3>施工＋分段驗收（6–13 星期）</h3>
+        <p>唔使日日到場，但三個關鍵位一定要親身驗：①水電完成入牆前　②泥水防水完成（48 小時試水）　③完工。每次驗收合格先付該期款。</p>
+        <p class="tip">→ 用「驗收清單」逐項剔</p>
+      </div></div>
+      <div class="jstep"><div class="dot">7</div><div class="bd">
+        <h3>完工收樓・保養期（入伙後）</h3>
+        <p>執漏清單（snag list）書面列明限期執修。問清楚保養期（行規 3–12 個月）同範圍。留起 5–10% 尾數到執漏完成先付最穩陣。</p>
+        <p class="tip">→ 「驗收清單」有完工總驗收</p>
+      </div></div>
+    </div>
+  </div>
+  <div class="note good">💡 <b>成個 app 嘅用法：</b>每去到一個階段，返嚟呢頁搵對應工具。而家喺邊個階段就撳邊個 tab。</div>
+</section>
+
+<!-- ================= 工期計算 ================= -->
+<section class="panel" id="p-timeline">
+  <h2 class="sec">工期計算器 — 到底要預幾耐？</h2>
+  <p class="sub">輸入單位資料，即刻睇到分階段時間表＋幾時要落訂物料。工期參考行內 2026 年基準，實際以承辦商報價為準。</p>
+  <div class="card">
+    <div class="grid2">
+      <div><label class="f">樓型</label>
+        <select id="t-type">
+          <option value="public">公屋</option>
+          <option value="hos">居屋（清水房）</option>
+          <option value="private" selected>私樓</option>
+          <option value="old">舊樓／唐樓（30 年以上）</option>
+        </select></div>
+      <div><label class="f">實用面積（呎）</label>
+        <input type="number" id="t-size" value="450" min="100" max="3000"></div>
+      <div><label class="f">工程範圍</label>
+        <select id="t-scope">
+          <option value="full" selected>全屋翻新（拆晒重做）</option>
+          <option value="partial">局部裝修（廚廁＋油漆為主）</option>
+          <option value="light">簡單翻新（油漆＋地板＋執漏）</option>
+        </select></div>
+      <div><label class="f">預計開工日期</label>
+        <input type="date" id="t-date"></div>
+    </div>
+    <button class="btn" id="t-go">計算工期</button>
+  </div>
+  <div id="t-result" style="display:none">
+    <div class="hero-num"><div class="n" id="t-total"></div><div class="l" id="t-range"></div></div>
+    <div class="card">
+      <h3>分階段時間表</h3>
+      <div class="gantt" id="t-gantt"></div>
+      <div class="note">⏱️ 泥水期已包 <b>48 小時浸水試防水</b> — 呢兩日慳唔得，好多滲漏糾紛就係因為冇做。</div>
+    </div>
+    <div class="card">
+      <h3>📌 落訂倒數提醒（最多人中伏嘅位）</h3>
+      <div id="t-reminders"></div>
+      <div class="note warn">⚠️ 進口磁磚／潔具 lead time 一般 <b>4–8 星期</b>，訂造傢俬要喺木工開始前 <b>6–8 星期</b>落單。訂遲咗成條時間表就會冧。</div>
+    </div>
+    <div class="card">
+      <h3>連埋前期，總共要預幾耐？</h3>
+      <table class="tb">
+        <tr><th>階段</th><th>時間</th></tr>
+        <tr><td>諗需求＋搵公司＋比較報價</td><td>4–8 星期</td></tr>
+        <tr><td>設計＋出圖＋簽約</td><td>2–4 星期</td></tr>
+        <tr><td>施工（上面計嘅）</td><td id="t-buildrow">—</td></tr>
+        <tr><td>執漏＋散味（新傢俬甲醛）</td><td>1–3 星期</td></tr>
+      </table>
+      <div class="note good">💡 由「開始諗」到「入住」，全屋翻新普遍要 <b>3–5 個月</b>。想農曆年前入伙，年中就要開始搵公司。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 預算計算 ================= -->
+<section class="panel" id="p-budget">
+  <h2 class="sec">預算計算器</h2>
+  <p class="sub">粗略估算範圍，等你同設計師傾嘅時候心中有數。實際造價受樓齡、物料、訂造傢俬數量影響好大。</p>
+  <div class="card">
+    <div class="grid2">
+      <div><label class="f">實用面積（呎）</label>
+        <input type="number" id="b-size" value="450" min="100" max="3000"></div>
+      <div><label class="f">裝修檔次</label>
+        <select id="b-grade">
+          <option value="basic">基本實用（約 $600–900/呎）</option>
+          <option value="mid" selected>中檔（約 $900–1,400/呎）</option>
+          <option value="high">高檔／設計主導（$1,500+/呎）</option>
+        </select></div>
+    </div>
+    <button class="btn" id="b-go">估算預算</button>
+  </div>
+  <div id="b-result" style="display:none">
+    <div class="hero-num"><div class="n" id="b-total"></div><div class="l">估算工程費範圍（未計傢俬電器）</div></div>
+    <div class="card">
+      <h3>記得另外預埋呢啲</h3>
+      <table class="tb">
+        <tr><th>項目</th><th>建議</th></tr>
+        <tr><td><b>應急錢</b>（拆牆先見到嘅暗病、加減工程）</td><td>工程費 10–15%<span id="b-buffer"></span></td></tr>
+        <tr><td>活動傢俬＋電器</td><td>視乎選擇，普遍 $50k–150k</td></tr>
+        <tr><td>管理處裝修按金＋垃圾清運費</td><td>每屋苑唔同，$3k–20k</td></tr>
+        <tr><td>裝修期間租住／搬屋開支</td><td>如需要</td></tr>
+      </table>
+      <div class="note warn">⚠️ 報價明顯低過市價 20% 以上，多數係「低價釣魚」— 開工後先加價。平，唔一定係著數。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 溝通 ================= -->
+<section class="panel" id="p-talk">
+  <h2 class="sec">同設計師／裝修公司點溝通</h2>
+  <p class="sub">新手同設計師傾偈最大問題：講唔清自己想要咩，又唔知要問咩。呢度三步搞掂。</p>
+
+  <div class="card">
+    <h3>① Brief 生成器 — 傾偈前先整理好需求</h3>
+    <p style="font-size:.9rem;color:var(--ink2);margin-bottom:12px">答幾條問題，生成一份需求書。傾偈時直接畀對方睇，慳咗雞同鴨講嘅時間，對方報價都會準啲。</p>
+    <div class="grid2">
+      <div><label class="f">單位類型＋呎數</label><input type="text" id="g-unit" placeholder="例：私樓 450 呎兩房"></div>
+      <div><label class="f">住幾多人（有冇老人／小朋友／寵物）</label><input type="text" id="g-ppl" placeholder="例：夫婦二人＋一隻貓"></div>
+      <div><label class="f">工程範圍</label><input type="text" id="g-scope" placeholder="例：全屋翻新，廚房想開放式"></div>
+      <div><label class="f">預算上限</label><input type="text" id="g-budget" placeholder="例：$50 萬連傢俬"></div>
+      <div><label class="f">喜歡嘅風格（可貼參考圖 link）</label><input type="text" id="g-style" placeholder="例：日系無印風、木色＋白"></div>
+      <div><label class="f">期望入伙時間</label><input type="text" id="g-when" placeholder="例：農曆年前"></div>
+    </div>
+    <label class="f" style="margin-top:12px">最重視嘅三樣嘢＋而家單位最唔滿意嘅地方</label>
+    <textarea id="g-need" rows="3" placeholder="例：儲物空間一定要夠、廚房要易清潔；而家最憎廁所冇窗好焗"></textarea>
+    <button class="btn" id="g-go">生成需求書</button>
+    <button class="btn ghost" id="g-copy" style="display:none">複製</button>
+    <div class="copybox" id="g-out"></div>
+  </div>
+
+  <div class="card">
+    <h3>② 見面必問 10 條 — 篩走唔掂嘅公司</h3>
+    <ul class="chk" id="ask10">
+      <li><input type="checkbox"><span><b>1. 有冇商業登記？公司成立幾耐？</b><small>網上查 BR，太新／查唔到要小心</small></span></li>
+      <li><input type="checkbox"><span><b>2. 可唔可以睇緊做緊嘅地盤？</b><small>睇工地企唔企理，好過睇 100 張完工靚相</small></span></li>
+      <li><input type="checkbox"><span><b>3. 邊個實際跟我個工程？判上判定自己師傅？</b><small>層層外判＝溝通斷層＋質素冇保證</small></span></li>
+      <li><input type="checkbox"><span><b>4. 報價單會唔會逐項列品牌、型號、數量？</b><small>唔肯逐項列嘅，直接 pass</small></span></li>
+      <li><input type="checkbox"><span><b>5. 付款點分期？尾數幾多、幾時付？</b><small>要求開工前收 50% 以上係大紅旗</small></span></li>
+      <li><input type="checkbox"><span><b>6. 工期幾耐？延誤有冇賠償條款？</b><small>肯寫入合約先算數</small></span></li>
+      <li><input type="checkbox"><span><b>7. 中途加減工程點計價？</b><small>要求書面確認先施工，唔好口頭</small></span></li>
+      <li><input type="checkbox"><span><b>8. 防水用咩物料、做幾多層、試唔試水？</b><small>答唔出嚟嘅唔好幫襯</small></span></li>
+      <li><input type="checkbox"><span><b>9. 保養期幾耐？包啲咩？</b><small>行規 3–12 個月，要寫明範圍</small></span></li>
+      <li><input type="checkbox"><span><b>10. 有冇買第三者保險（工傷／財物損毀）？</b><small>出事業主隨時孭鑊</small></span></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>③ 付款節奏 — 消委會建議最少分 4 期</h3>
+    <table class="tb">
+      <tr><th>期數</th><th>時點</th><th>建議比例</th></tr>
+      <tr><td>第 1 期</td><td>簽約／開工</td><td>10–20%</td></tr>
+      <tr><td>第 2 期</td><td>水電＋泥水完成，<b>驗收合格後</b></td><td>約 30%</td></tr>
+      <tr><td>第 3 期</td><td>木工完成，<b>驗收合格後</b></td><td>約 30%</td></tr>
+      <tr><td>尾數</td><td>完工總驗收＋執漏完成後</td><td>20–30%</td></tr>
+    </table>
+    <div class="note">🔑 核心原則：<b>錢跟驗收走</b>。每一期都係「驗收合格先過數」，你手上嘅尾數就係最大談判籌碼。</div>
+    <div class="note warn">⚠️ 溝通鐵律：所有改動、承諾、加減工程，一律要 <b>WhatsApp／書面確認</b>。口頭講嘅嘢，打起官司等於冇講過。</div>
+  </div>
+</section>
+
+<!-- ================= 驗收 ================= -->
+<section class="panel" id="p-inspect">
+  <h2 class="sec">逐工序驗收清單</h2>
+  <p class="sub">超過七成裝修糾紛源於驗收不足。每個工序完成就即場驗，唔好等埋單先算。清單可以逐項剔（本頁關閉後唔會保存，驗收時一次過用）。</p>
+  <div class="card" style="padding:14px 20px">
+    <div class="prog"><div id="insp-bar" style="width:0%"></div></div>
+    <div class="prog-label" id="insp-label">已完成 0 / 0 項</div>
+  </div>
+  <div id="insp-wrap"></div>
+  <div class="note good">💡 驗收裝備：手機電筒（斜照牆面睇批盪）、硬幣（敲磁磚）、水平尺 app、萬用插蘇測試器（幾十蚊五金舖有）、乒乓球（測地台去水斜度）。</div>
+</section>
+
+<!-- ================= 伏位 ================= -->
+<section class="panel" id="p-traps">
+  <h2 class="sec">伏位警示廊</h2>
+  <p class="sub">消委會 7 年錄得 1,205 宗裝修投訴、涉款 2.7 億。以下係最常見手法＋拆解方法。</p>
+  <div class="card">
+    <div class="trap"><div class="ic">1</div><div><b>低價釣魚，開工後加價</b><p>報價平過市價兩三成吸你簽約，拆咗牆先話「呢度要加錢」，你騎虎難下。</p><p class="how">拆解：三間報價互相對照；明顯平嘅問清楚點解；合約寫明加減工程計價方式。</p></div></div>
+    <div class="trap"><div class="ic">2</div><div><b>報價單「一口價」／「雜項」灌水</b><p>成張單得幾行，「全屋水電 $XX」冇數量冇型號，之後咩都話「唔包」。</p><p class="how">拆解：逐項列工序＋品牌型號＋數量＋單價；「雜項」超過 5% 要問清楚。</p></div></div>
+    <div class="trap"><div class="ic">3</div><div><b>開工收一半以上訂金</b><p>收咗大額訂金後拖工、甩底，甚至公司結業走佬，追無可追。</p><p class="how">拆解：首期唔超過 20%；分最少 4 期；驗收合格先過數。</p></div></div>
+    <div class="trap"><div class="ic">4</div><div><b>防水 hea 做</b><p>防水係入牆睇唔到嘅工序，最易偷工。搬入去先發現滲水，拆磚重做貴過當初十倍。</p><p class="how">拆解：指明防水物料同層數；泥水後必須 48 小時浸水試驗，落層天花冇印先算合格。</p></div></div>
+    <div class="trap"><div class="ic">5</div><div><b>口頭承諾唔入單</b><p>「呢啲小事送畀你啦」— 埋單就話冇講過，或者做完質素麻麻你冇得追。</p><p class="how">拆解：所有承諾 WhatsApp 覆實或者寫入報價單先算數。</p></div></div>
+    <div class="trap"><div class="ic">6</div><div><b>亂改結構／僭建</b><p>師傅話「呢幅牆拆得」，點知係主力牆或者改咗喉管走位，隨時犯《建築物條例》兼影響全幢安全。</p><p class="how">拆解：涉及拆牆、改廁所廚房位置，要求出則兼問清楚使唔使入紙屋宇署／房署批准。</p></div></div>
+    <div class="trap"><div class="ic">7</div><div><b>用次貨扮正貨</b><p>單上寫 A 牌磁磚／油漆，落貨時換咗平價貨，你唔識睇。</p><p class="how">拆解：物料到場影低包裝箱嘜頭同批號，對返報價單先開工。</p></div></div>
+    <div class="trap"><div class="ic">8</div><div><b>拖工期冇後果</b><p>話兩個月變四個月，你租緊屋雙重開支，佢一句「等緊料」就打發你。</p><p class="how">拆解：合約寫明完工日期＋每日延誤賠償額（例如每日 $500–1,000）。</p></div></div>
+  </div>
+  <div class="note">📋 出事點算？先書面（電郵）向公司提出＋影相存證 → 唔得就搵消委會投訴 → 涉款 $75,000 以下可以入稟小額錢債審裁處，唔使律師。</div>
+</section>
+
+<!-- ================= 字典 ================= -->
+<section class="panel" id="p-dict">
+  <h2 class="sec">裝修術語字典</h2>
+  <p class="sub">睇報價單、同師傅溝通前必備。識講行話，冇咁易被人當水魚。</p>
+  <div class="searchbar"><input type="text" id="dict-q" placeholder="搜尋術語，例如：批盪"></div>
+  <div class="dict" id="dict-list"></div>
+</section>
+
+<div class="footer-note">
+  內容參考《香港裝修指引 2.0》、消委會裝修報價建議及行內公開資料整理，僅供教育參考，唔構成專業意見。<br>
+  實際工期、造價、法規要求以專業人士評估為準。© 2026 裝修無伏
+</div>
+
+</div>
+
+<script>
+// tab switching
+const tabs=document.getElementById('tabs');
+tabs.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('section.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-'+b.dataset.t).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+// ---------- 工期計算 ----------
+const STAGES=[
+ {k:'demo', n:'保護＋拆卸', lo:3, hi:5},
+ {k:'me',   n:'水電改動',   lo:5, hi:7, note:'完成後第 1 個驗收位'},
+ {k:'wet',  n:'泥水鋪磚',   lo:10,hi:14,note:'含 48 小時試水・第 2 個驗收位'},
+ {k:'wood', n:'木工訂造',   lo:7, hi:10},
+ {k:'paint',n:'油漆批盪',   lo:5, hi:7},
+ {k:'fit',  n:'潔具燈掣安裝',lo:3, hi:5},
+ {k:'clean',n:'清潔交付',   lo:2, hi:3, note:'完工總驗收'}
+];
+function factor(type,size,scope){
+  let f=1;
+  if(type==='public')f*=0.8; if(type==='hos')f*=0.9; if(type==='old')f*=1.2;
+  if(size<300)f*=0.85; else if(size>=500&&size<800)f*=1.2; else if(size>=800)f*=1.45;
+  if(scope==='partial')f*=0.6; if(scope==='light')f*=0.35;
+  return f;
+}
+function fmtD(d){return (d.getMonth()+1)+'月'+d.getDate()+'日';}
+document.getElementById('t-go').addEventListener('click',()=>{
+  const type=document.getElementById('t-type').value;
+  const size=+document.getElementById('t-size').value||450;
+  const scope=document.getElementById('t-scope').value;
+  const f=factor(type,size,scope);
+  let lo=0,hi=0;
+  const rows=STAGES.map(s=>{
+    let slo=Math.max(1,Math.round(s.lo*f)),shi=Math.max(slo,Math.round(s.hi*f));
+    if(scope==='light'&&(s.k==='me'||s.k==='wet')){slo=Math.max(1,Math.round(slo*0.5));shi=Math.max(slo,Math.round(shi*0.5));}
+    lo+=slo;hi+=shi;return{...s,slo,shi};
+  });
+  document.getElementById('t-total').textContent='約 '+lo+' – '+hi+' 日';
+  document.getElementById('t-range').textContent='淨施工期（唔計設計、訂料同執漏）';
+  document.getElementById('t-buildrow').textContent=Math.round(lo/7)+'–'+Math.ceil(hi/7)+' 星期';
+  // gantt
+  let acc=0;const total=hi;const g=document.getElementById('t-gantt');g.innerHTML='';
+  rows.forEach(r=>{
+    const left=acc/total*100, w=r.shi/total*100; acc+=r.shi;
+    const row=document.createElement('div');row.className='row';
+    row.innerHTML='<div class="nm">'+r.n+(r.note?'<small>'+r.note+'</small>':'')+'</div>'+
+      '<div class="track"><div class="bar'+((left+w)>78?' end':'')+'" style="left:'+left+'%;width:'+Math.max(w,3)+'%"><span>'+r.slo+'–'+r.shi+'日</span></div></div>';
+    g.appendChild(row);
+  });
+  // reminders
+  const dv=document.getElementById('t-date').value;
+  const rm=document.getElementById('t-reminders');rm.innerHTML='';
+  const start=dv?new Date(dv+'T00:00:00'):null;
+  const woodStartLo=rows[0].slo+rows[1].slo+rows[2].slo; // days until wood stage
+  const items=[
+    {off:-42,label:'開工前 6 星期',txt:'落訂磁磚、潔具、廚櫃檯面（進口貨 lead time 4–8 週）'},
+    {off:-14,label:'開工前 2 星期',txt:'通知管理處攞裝修許可＋按金，通知上下左右鄰居'},
+    {off:-7, label:'開工前 1 星期',txt:'影低全屋交吉狀態（連公家走廊），日後有拗撬有證據'},
+    {off:woodStartLo-42<0?-35:woodStartLo-42,label:'木工前 6 星期',txt:'確認訂造傢俬圖則＋落單（訂造期普遍 6–8 週）',rel:true},
+    {off:rows[0].slo+rows[1].slo,label:'水電完成時',txt:'📍 親身驗收①：入牆前逐條線、逐個掣位核對',rel:true},
+    {off:woodStartLo,label:'泥水完成時',txt:'📍 親身驗收②：48 小時試水＋敲磚驗空鼓',rel:true}
+  ];
+  items.sort((a,b)=>a.off-b.off);
+  items.forEach(it=>{
+    let dtxt=it.label;
+    if(start){const d=new Date(start);d.setDate(d.getDate()+it.off);dtxt=fmtD(d)+'前';}
+    const el=document.createElement('div');el.className='reminder';
+    el.innerHTML='<span class="d">'+dtxt+'</span><span>'+it.txt+'（'+it.label+'）</span>';
+    rm.appendChild(el);
+  });
+  document.getElementById('t-result').style.display='block';
+  document.getElementById('t-result').scrollIntoView({behavior:'smooth'});
+});
+
+// ---------- 預算 ----------
+const GRADES={basic:[600,900],mid:[900,1400],high:[1500,2200]};
+document.getElementById('b-go').addEventListener('click',()=>{
+  const size=+document.getElementById('b-size').value||450;
+  const g=GRADES[document.getElementById('b-grade').value];
+  const lo=size*g[0],hi=size*g[1];
+  const f=n=>n>=10000?'$'+(n/10000).toFixed(0)+'萬':'$'+n.toLocaleString();
+  document.getElementById('b-total').textContent=f(lo)+' – '+f(hi);
+  document.getElementById('b-buffer').textContent='（即約 '+f(lo*0.1)+' – '+f(hi*0.15)+'）';
+  document.getElementById('b-result').style.display='block';
+  document.getElementById('b-result').scrollIntoView({behavior:'smooth'});
+});
+
+// ---------- Brief 生成 ----------
+document.getElementById('g-go').addEventListener('click',()=>{
+  const v=id=>document.getElementById(id).value.trim()||'（未填）';
+  const out=`【裝修需求書】
+單位：${v('g-unit')}
+居住成員：${v('g-ppl')}
+工程範圍：${v('g-scope')}
+預算上限：${v('g-budget')}（已包／未包傢俬請註明）
+風格參考：${v('g-style')}
+期望入伙：${v('g-when')}
+
+最重視／最想解決：
+${v('g-need')}
+
+想同貴司確認：
+1. 請提供逐項報價（工序＋物料品牌型號＋數量＋單價）
+2. 付款擬分 4 期，每期以驗收合格為準
+3. 請註明工期、延誤安排及保養期範圍`;
+  const box=document.getElementById('g-out');
+  box.textContent=out;box.style.display='block';
+  document.getElementById('g-copy').style.display='inline-block';
+});
+document.getElementById('g-copy').addEventListener('click',e=>{
+  const t=document.getElementById('g-out').textContent;
+  navigator.clipboard.writeText(t).then(()=>{e.target.textContent='已複製 ✓';setTimeout(()=>e.target.textContent='複製',1500);});
+});
+
+// ---------- 驗收清單 ----------
+const INSPECT=[
+ {t:'水電驗收（入牆前・最後補救機會）',tag:'驗收位 ①',items:[
+  ['對圖核位','逐個插座、燈掣、燈位對返設計圖位置同高度，錯咗而家改係免費，鋪咗磚先改係災難'],
+  ['電線規格','冷氣、熱水爐等大電量用 2.5mm² 以上獨立迴路；問清楚用咩牌子線（金龍／CMW 等）'],
+  ['喉管走位','影低全屋開槽走線相！日後鑽牆掛嘢先知邊度有線有喉'],
+  ['水管試壓','新水管應加壓測試冇跌壓；冷熱水喉分色（藍／紅）'],
+  ['去水暢順','每個去水位倒水測試，聽下有冇異響、倒返流'],
+  ['漏電掣測試','撳漏電斷路器測試掣，要即刻跳掣']
+ ]},
+ {t:'泥水驗收（鋪磚＋防水）',tag:'驗收位 ②',items:[
+  ['48 小時試水','浴室封去水位放水浸 48 小時，落層或隔籬房天花牆身冇濕印先合格 — 呢項唔合格其他都唔使講'],
+  ['敲磚驗空鼓','硬幣逐塊磚敲，空心聲＝空鼓；單塊空鼓面積唔超過 15%、每 100 塊唔多過 3–5 塊為行內容忍線，浴室廚房牆磚要更嚴'],
+  ['磚縫平整','磚與磚高低差唔超過 0.5mm（指甲刮唔到級），縫闊均勻'],
+  ['去水斜度','地台落水位放乒乓球／倒水，要自己流向去水口，唔積水'],
+  ['陰陽角垂直','牆角用水平尺 app 度，批盪要直'],
+  ['窗邊打膠','窗框四邊防水膠完整冇罅（滲水重災區）']
+ ]},
+ {t:'木工驗收（訂造傢俬）',tag:'',items:[
+  ['門櫃開合','每一度門、每一個櫃桶開關 10 次：順唔順、有冇異聲、自動回彈正唔正常'],
+  ['縫位均勻','櫃門與櫃身縫位闊窄一致（目測 2mm 內差異）'],
+  ['封邊完整','板材封邊冇崩、冇起泡、冇甩膠；聞下有冇刺鼻甲醛味'],
+  ['五金對版','鉸鏈、路軌、拉手品牌對返報價單（Blum／Hettich 定雜牌差好遠）'],
+  ['水平垂直','吊櫃、層板放水平尺 app 檢查'],
+  ['入牆穩固','搖下高櫃、吊櫃，唔應該郁']
+ ]},
+ {t:'油漆驗收',tag:'',items:[
+  ['側光照牆','電筒貼牆斜照，睇批盪波浪紋、砂紙痕、釘眼'],
+  ['色澤均勻','日光＋開燈各睇一次，冇色差、冇接痕'],
+  ['冇甩色裂紋','近牆腳、門框位睇裂紋；手背輕擦唔甩粉'],
+  ['收邊乾淨','天花線、牆腳線、掣面四邊油得直，冇油污染到其他位置']
+ ]},
+ {t:'完工總驗收（畀尾數前）',tag:'驗收位 ③',items:[
+  ['全屋水電再測','每個插座用測試器插一次、每盞燈開一次、冷熱水每個龍頭放一次'],
+  ['門窗開關','每度門窗開合＋上鎖測試，膠邊完整'],
+  ['對單核數','逐項對返報價單：有冇做漏、物料對唔對版、加減工程數目啱唔啱'],
+  ['執漏清單','發現問題書面列 snag list，寫明執修限期，執完先付尾數'],
+  ['攞齊文件','保養卡、電器單據、油漆磁磚型號（日後補油補磚要用）、水電走線相'],
+  ['保養期確認','書面確認保養期（3–12 個月）同覆蓋範圍']
+ ]}
+];
+const wrapEl=document.getElementById('insp-wrap');
+INSPECT.forEach((sec,si)=>{
+  const d=document.createElement('details');d.className='acc';if(si===0)d.open=true;
+  d.innerHTML='<summary>'+(sec.tag?'<span><span class="pill org">'+sec.tag+'</span>'+sec.t+'</span>':'<span>'+sec.t+'</span>')+'</summary>';
+  const inner=document.createElement('div');inner.className='inner';
+  const ul=document.createElement('ul');ul.className='chk';
+  sec.items.forEach(it=>{
+    const li=document.createElement('li');
+    li.innerHTML='<input type="checkbox"><span><b>'+it[0]+'</b><small>'+it[1]+'</small></span>';
+    ul.appendChild(li);
+  });
+  inner.appendChild(ul);d.appendChild(inner);wrapEl.appendChild(d);
+});
+function refreshProg(){
+  const boxes=document.querySelectorAll('#insp-wrap input[type=checkbox]');
+  const done=[...boxes].filter(b=>b.checked).length;
+  document.getElementById('insp-bar').style.width=(boxes.length?done/boxes.length*100:0)+'%';
+  document.getElementById('insp-label').textContent='已完成 '+done+' / '+boxes.length+' 項';
+}
+document.addEventListener('change',e=>{
+  if(e.target.matches('.chk input[type=checkbox]')){
+    e.target.closest('li').classList.toggle('done',e.target.checked);
+    if(e.target.closest('#insp-wrap'))refreshProg();
+  }
+});
+refreshProg();
+
+// ---------- 字典 ----------
+const DICT=[
+ ['清水房','發展商交樓時得混凝土同基本批盪，咩都冇 — 居屋常見，裝修要由零做起，工期預長啲'],
+ ['交吉','單位交出時清空無人無雜物嘅狀態'],
+ ['批盪','牆身抹灰打底，令牆面平整先可以油漆；批得靚唔靚直接影響油漆效果'],
+ ['大執／細執','大執＝全屋翻新拆晒重做；細執＝局部裝修執靚佢'],
+ ['泥水','鋪磚、砌牆、防水、批盪呢類濕作工序嘅統稱'],
+ ['空鼓','磁磚同牆／地黏合唔實，敲落去空心聲，日後易裂易甩'],
+ ['去水','排水。「去水斜度」即係地台要斜向去水口唔積水'],
+ ['來去水','供水（來水）同排水（去水）系統，改廚廁必講'],
+ ['假天花','原有天花下加建嘅天花，用嚟藏冷氣喉、燈槽線'],
+ ['地台','抬高咗嘅地面結構，可以儲物；同「地板」唔同'],
+ ['訂造傢俬','度身訂做嘅固定傢俬（衣櫃、廚櫃、地台床），交貨期普遍 6–8 星期'],
+ ['主力牆','承重結構牆，拆咗會影響全幢安全，犯法！拆牆前必須搵專業人士確認'],
+ ['跳掣','斷路器因短路／漏電／過載自動斷電；新裝修成日跳掣即係水電有問題'],
+ ['士敏土／英泥','水泥。行內師傅好多時講「落石屎」「唧英泥」'],
+ ['嚡面／滑面','磁磚表面質感：嚡面防滑（浴室地）、滑面易抹（牆磚）'],
+ ['入則','向屋宇署／房署入紙申請批准改動圖則，涉結構或走水位多數要'],
+ ['僭建','未經批准嘅建築改動，隨時收清拆令，買賣樓仲會影響按揭'],
+ ['執漏','完工後修正瑕疵嘅工序；書面列低叫 snag list'],
+ ['甩底','師傅接咗單但唔出現／中途消失，裝修界最常見投訴之一'],
+ ['釘契','口語指單位有法律問題被「釘」；裝修僭建嚴重可能導致'],
+ ['天花線／牆腳線','天花同牆、牆同地交界嘅裝飾線條收口'],
+ ['防水層','浴室廚房地台牆身嘅防滲塗層，一般做 2–3 層＋上返一定高度（浴室牆建議 1.8 米）']
+];
+const dictList=document.getElementById('dict-list');
+function renderDict(q){
+  dictList.innerHTML='';
+  DICT.filter(d=>!q||d[0].includes(q)||d[1].includes(q)).forEach(d=>{
+    const el=document.createElement('div');el.className='term';
+    el.innerHTML='<b>'+d[0]+'</b><p>'+d[1]+'</p>';
+    dictList.appendChild(el);
+  });
+  if(!dictList.children.length)dictList.innerHTML='<div class="term"><p>搵唔到，試下其他字眼</p></div>';
+}
+document.getElementById('dict-q').addEventListener('input',e=>renderDict(e.target.value.trim()));
+renderDict('');
+</script>
+</body>
+</html>
