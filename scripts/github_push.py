@@ -39,6 +39,34 @@ except ImportError:
 API = "https://api.github.com"
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# --- 2026-07-15 concurrent-push 事後可見警報（overlap 診斷 fix A，見
+#     stephanie-personal CHANGELOG 2026-07-15）。Fail-silent，唔影響push行為，
+#     remote永遠贏，本地照常上——純粹畀你事後喺log見到「可能撞咗」。 ---
+_PUSH_STATE_DIR = os.path.join(os.path.dirname(REPO), "stephanie-personal", "scripts", ".push-state")
+_PUSH_STATE_FILE = os.path.join(_PUSH_STATE_DIR, os.path.basename(REPO) + ".json")
+
+
+def _check_concurrent_push(base_sha):
+    try:
+        if not os.path.isfile(_PUSH_STATE_FILE):
+            return
+        last = json.load(open(_PUSH_STATE_FILE))
+        last_sha = last.get("last_seen_sha")
+        if last_sha and last_sha != base_sha:
+            print(f"⚠️ CONCURRENT-PUSH-DETECTED：remote SHA喺上個cycle之後變咗（{last_sha[:7]}→{base_sha[:7]}），可能有第二部機/session推過嘢")
+    except Exception:
+        pass
+
+
+def _record_seen_sha(sha):
+    try:
+        os.makedirs(_PUSH_STATE_DIR, exist_ok=True)
+        with open(_PUSH_STATE_FILE, "w") as f:
+            json.dump({"last_seen_sha": sha}, f)
+    except Exception:
+        pass
+
+
 if load_dotenv:
     load_dotenv(os.path.join(REPO, ".env"))
 
@@ -146,6 +174,7 @@ def main():
         base_sha, base_tree, remote = None, None, {}
     else:
         base_sha = ref["object"]["sha"]
+        _check_concurrent_push(base_sha)
         base_tree = api("GET", f"{base}/commits/{base_sha}", token)["tree"]["sha"]
         remote = remote_tree_map(base, base_tree, token)
 
@@ -172,8 +201,10 @@ def main():
     if not tree:
         if is_empty_repo:
             print("Nothing to push — 冇任何檔案（空 repo 亦冇本地檔案可以 bootstrap）。")
+            _record_seen_sha(base_sha)
             return
         print("Nothing to push — 遠端已同步。")
+        _record_seen_sha(base_sha)
         return
 
     tree_body = {"tree": tree}
@@ -192,6 +223,7 @@ def main():
     else:
         api("PATCH", f"{base}/refs/heads/main", token, {"sha": commit["sha"]})
 
+        _record_seen_sha(commit["sha"])
     print(f"✅ Pushed to GitHub — {message}" + (" (首次 bootstrap)" if is_empty_repo else ""))
     print(f"   {uploaded} 更新 / {len(deletions)} 刪除 · commit {commit['sha'][:7]}")
 
