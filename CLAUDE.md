@@ -28,6 +28,8 @@
 
 ## Git / Auto-push
 
+> 裝機步驟正本 → `stephanie-personal/docs/PUSH-SETUP.md`。
+
 呢個 project 已經接入 Stephanie 現有嘅 auto-push 機制：
 
 - Repo：`https://github.com/auzistephanie/make-my-home.git`
