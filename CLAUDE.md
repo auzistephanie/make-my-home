@@ -32,7 +32,7 @@
 
 - Repo：`https://github.com/auzistephanie/make-my-home.git`
 - `.env`（GITHUB_TOKEN，gitignored）／`scripts/github_push.py`／`.gitignore` 已裝好，同 `fable-prompt` 等其他 repo 同一套
-- 已加入 `~/Desktop/Stephanie-Google Drive/dev/stephanie-personal/scripts/autopush-registry.txt`，會俾 launchd daemon 或 `push-now.command` 一齊 push，唔使手動 `git push`
+- 已加入 `~/Desktop/Stephanie-Google Drive/dev/stephanie-personal/scripts/autopush-registry.txt`，雙擊 `push-now.command` 就一齊 push（launchd daemon 已於 2026-07-16 拆，冇背景自動 push）
 - 手動即刻 push：雙擊 `push-now.command`（喺 stephanie-personal/scripts/）或者本 repo 直接跑 `python3 scripts/github_push.py "commit message"`
 
 ## Project 存放位置
