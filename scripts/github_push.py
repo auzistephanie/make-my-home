@@ -223,7 +223,12 @@ def main():
     else:
         api("PATCH", f"{base}/refs/heads/main", token, {"sha": commit["sha"]})
 
-        _record_seen_sha(commit["sha"])
+    # 2026-07-19 修：之前 `_record_seen_sha` 淨係喺 else（唔係 empty_repo）分支入面
+    # call，即係第一次 bootstrap push（empty repo 建立第一個 commit）完全冇記低
+    # state file，令 concurrent-push 偵測喺 bootstrap 之後嗰個 push 前有一次「盲
+    # 窗」（`_check_concurrent_push` 見到冇 state file 就直接 return，唔警告）。
+    # 搬出嚟做兩個分支都會行到，bootstrap push 完成即刻都記低 seen sha。
+    _record_seen_sha(commit["sha"])
     print(f"✅ Pushed to GitHub — {message}" + (" (首次 bootstrap)" if is_empty_repo else ""))
     print(f"   {uploaded} 更新 / {len(deletions)} 刪除 · commit {commit['sha'][:7]}")
 
