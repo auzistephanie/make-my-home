@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裝修無伏 — MakeMyHome</title>
+<link rel="stylesheet" href="css/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div id="app"><div class="empty">載入緊…</div></div>
+<div id="toast" class="toast"></div>
+
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/photos.js"></script>
+<script src="js/content.js"></script>
+<script>
+/* ============================================================
+   裝修無伏 app.html — SPA, hash routing.
+   Routes: #/login #/dashboard #/needs #/quotes #/build
+   全部寫入 optimistic update + 失敗 toast（見 CLAUDE_BUILD_SPEC.md §5.2）
+   ============================================================ */
+
+const appEl = document.getElementById('app');
+const toastEl = document.getElementById('toast');
+
+// ---------------- small utils ----------------
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function money(n) {
+  if (n === null || n === undefined || n === '') return '$0';
+  return '$' + Number(n).toLocaleString();
+}
+function dispDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+}
+function flatTypeLabel(v) { return (FLAT_TYPES.find(t => t.value === v) || {}).label || v || '未設定'; }
+function scopeLabel(v) { return (SCOPES.find(t => t.value === v) || {}).label || v || '未設定'; }
+let toastTimer = null;
+function toast(msg, isErr) {
+  toastEl.textContent = msg;
+  toastEl.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.className = 'toast' + (isErr ? ' err' : ''); }, 2600);
+}
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+async function copyText(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (btn) { const old = btn.textContent; btn.textContent = '已複製 ✓'; setTimeout(() => btn.textContent = old, 1400); }
+  } catch (e) { toast('複製失敗，請手動選取', true); }
+}
+
+// ---------------- global state ----------------
+const state = {
+  session: null,
+  user: null,
+  projects: [],
+  currentProjectId: null,
+  rooms: [],
+  activeRoomId: null,
+  needsStep: 0,
+  needsView: 'wizard', // 'wizard' | 'summary'
+  quotes: [],
+  quoteFormOpen: false,
+  editingQuoteId: null,
+  stages: [],
+  photosByStage: {}, // stageId -> [{...row, url}]
+};
+
+function projectKey(userId) { return 'mmh_current_project_' + userId; }
+function loadCurrentProjectId(userId) {
+  return localStorage.getItem(projectKey(userId)) || null;
+}
+function saveCurrentProjectId(userId, projectId) {
+  if (projectId) localStorage.setItem(projectKey(userId), projectId);
+  else localStorage.removeItem(projectKey(userId));
+}
+function currentProject() {
+  return state.projects.find(p => p.id === state.currentProjectId) || null;
+}
+// Loads this user's projects and resolves state.currentProjectId, defaulting to the
+// first project if nothing (valid) was persisted yet. Every route that needs a
+// project (#/dashboard #/needs #/quotes #/build) calls this — previously only
+// #/dashboard had this fallback, so deep-linking straight to #/needs etc. (e.g. a
+// page refresh while on that route) incorrectly bounced to #/dashboard even when a
+// project existed, because state.currentProjectId was still null.
+async function resolveProjects() {
+  state.projects = await listProjects(state.user.id);
+  if (!state.currentProjectId) state.currentProjectId = loadCurrentProjectId(state.user.id);
+  if (!state.projects.find(p => p.id === state.currentProjectId)) {
+    state.currentProjectId = state.projects.length ? state.projects[0].id : null;
+  }
+  if (state.currentProjectId) saveCurrentProjectId(state.user.id, state.currentProjectId);
+  return currentProject();
+}
+
+// ---------------- router ----------------
+window.addEventListener('hashchange', route);
+window.addEventListener('DOMContentLoaded', () => {
+  if (!location.hash) location.hash = '#/login';
+  route();
+});
+
+async function route() {
+  const hash = location.hash || '#/login';
+  const path = hash.split('?')[0];
+  try {
+    if (path === '#/login') return renderLogin();
+    if (path === '#/dashboard') return renderDashboard();
+    if (path === '#/needs') return renderNeeds();
+    if (path === '#/quotes') return renderQuotes();
+    if (path === '#/build') return renderBuild();
+    location.hash = '#/login';
+  } catch (err) {
+    console.error('[route] failed:', err);
+    appEl.innerHTML = `<div class="empty">出錯喇：${esc(err.message || '未知錯誤')}<br><button class="btn mtop" onclick="location.reload()">重新載入</button></div>`;
+  }
+}
+
+// Common guard: ensures a session, populates state.session/user. Redirects+returns
+// null if not logged in (route render functions should `return` immediately after).
+async function guard() {
+  const session = await requireSession();
+  if (!session) return null;
+  state.session = session;
+  state.user = session.user;
+  return session;
+}
+
+// ---------------- shared chrome ----------------
+function chromeShell(activeTab, bodyHtml, projRowHtml) {
+  const tabs = [
+    { key: 'dashboard', hash: '#/dashboard', ic: '🏠', label: 'Dashboard' },
+    { key: 'needs',     hash: '#/needs',     ic: '📋', label: '需求規劃' },
+    { key: 'quotes',    hash: '#/quotes',    ic: '📊', label: '報價比較' },
+    { key: 'build',     hash: '#/build',     ic: '✅', label: '施工驗收' },
+  ];
+  return `
+    <div class="apphead">
+      <button class="lg" data-nav="#/dashboard">裝修無伏<small>MAKEMYHOME</small></button>
+      <button class="avatar" id="avatarBtn" title="登出">${esc((state.user && state.user.email || 'S')[0].toUpperCase())}</button>
+    </div>
+    ${projRowHtml || ''}
+    <div class="body">${bodyHtml}</div>
+    <div class="tabbar">
+      ${tabs.map(t => `<button data-nav="${t.hash}" class="${activeTab === t.key ? 'on' : ''}"><span class="ic">${t.ic}</span>${t.label}</button>`).join('')}
+    </div>
+  `;
+}
+function projectRowHtml() {
+  const opts = state.projects.map(p => `<option value="${p.id}" ${p.id === state.currentProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  return `<div class="projrow">🏠 Project：
+    <select id="projSelect">${opts}<option value="__new__">＋ 開新 project</option></select>
+  </div>`;
+}
+function attachChromeEvents() {
+  appEl.querySelectorAll('[data-nav]').forEach(el => el.addEventListener('click', () => { location.hash = el.dataset.nav; }));
+  const avatarBtn = document.getElementById('avatarBtn');
+  if (avatarBtn) avatarBtn.addEventListener('click', async () => {
+    if (confirm('登出裝修無伏？')) { await logout(); }
+  });
+  const projSelect = document.getElementById('projSelect');
+  if (projSelect) projSelect.addEventListener('change', async () => {
+    if (projSelect.value === '__new__') { location.hash = '#/dashboard'; state.forceNewProjectForm = true; await renderDashboard(); return; }
+    state.currentProjectId = projSelect.value;
+    saveCurrentProjectId(state.user.id, state.currentProjectId);
+    route();
+  });
+}
+
+// ================================================================
+// #/login
+// ================================================================
+async function renderLogin() {
+  const session = await getSession();
+  if (session) { location.hash = '#/dashboard'; return; }
+  appEl.innerHTML = `
+    <div style="max-width:420px;margin:0 auto">
+      <div class="body" style="text-align:center;padding:64px 24px">
+        <div style="font-size:2.4rem">🏠</div>
+        <h1 style="font-size:1.35rem;color:var(--green);margin:10px 0 4px">裝修無伏</h1>
+        <p style="font-size:.85rem;color:var(--ink2);margin-bottom:28px">儲存你嘅裝修計劃・報價比較・驗收記錄</p>
+        <button class="gbtn" id="googleBtn"><span class="gi"></span>用 Google 帳戶繼續</button>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:20px">我哋只攞你個 email 做登入，唔會 send 嘢俾你</p>
+      </div>
+    </div>`;
+  document.getElementById('googleBtn').addEventListener('click', () => loginWithGoogle());
+}
+
+// ================================================================
+// #/dashboard
+// ================================================================
+async function renderDashboard() {
+  if (!(await guard())) return;
+  await resolveProjects();
+
+  if (!state.projects.length || state.forceNewProjectForm) {
+    return renderNewProjectForm(!state.projects.length);
+  }
+
+  const project = currentProject();
+  const [rooms, quotes, stages] = await Promise.all([
+    listRooms(project.id),
+    listQuotes(project.id),
+    ensureStages(state.user.id, project.id),
+  ]);
+  const photoCount = await countPhotosForStages(stages.map(s => s.id));
+
+  // 而家階段 card
+  const inProgress = stages.find(s => s.started_on && !s.finished_on);
+  const allDone = stages.length && stages.every(s => s.finished_on);
+  const notStarted = stages.every(s => !s.started_on);
+  let stageBadge, stageTitle, stageNote = '';
+  if (allDone) {
+    stageBadge = 'g'; stageTitle = '🎉 全部工序已完成';
+  } else if (inProgress) {
+    const sDef = STAGES.find(s => s.k === inProgress.key);
+    stageBadge = 'o'; stageTitle = `施工中 — ${sDef.n}`;
+    if (project.start_date) {
+      const offsets = scheduleOffsets(project);
+      const off = offsets.find(o => o.key === inProgress.key);
+      if (off) {
+        const d = new Date(project.start_date + 'T00:00:00');
+        d.setDate(d.getDate() + off.endOffsetDays);
+        stageNote = `📍 預計 <b>${dispDate(d.toISOString().slice(0,10))}</b> 前完成呢個工序`;
+      }
+    }
+    const tip = STAGE_TIPS[inProgress.key];
+    if (tip) stageNote += (stageNote ? '<br>' : '') + tip;
+  } else if (notStarted) {
+    stageBadge = 'mut'; stageTitle = project.start_date ? `未開工 — 預計 ${dispDate(project.start_date)} 開工` : '未開工';
+  } else {
+    stageBadge = 'o'; stageTitle = '施工中';
+  }
+
+  const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
+  const needsStatus = rooms.length === 0 ? { pill: 'mut', label: '未開始' } : (roomsComplete === rooms.length ? { pill: 'g', label: '已完成' } : { pill: 'o', label: '進行中' });
+
+  const signedQuote = quotes.find(q => q.status === 'signed');
+  const quotesStatus = quotes.length === 0 ? { pill: 'mut', label: '未開始' } : (signedQuote ? { pill: 'g', label: '已簽約' } : { pill: 'o', label: `${quotes.length} 間比較中` });
+
+  const finishedStages = stages.filter(s => s.finished_on).length;
+  const buildStatus = finishedStages === 0 ? { pill: 'mut', label: '未開始' } : (finishedStages === stages.length ? { pill: 'g', label: '已完工' } : { pill: 'o', label: `${finishedStages}/${stages.length} 工序` });
+
+  const body = `
+    <div class="card" style="border-left:5px solid var(--accent)">
+      <span class="pill ${stageBadge}">而家階段</span><b style="font-size:.95rem">${stageTitle}</b>
+      ${stageNote ? `<div class="dt" style="margin-top:6px">${stageNote}</div>` : ''}
+    </div>
+    <div class="grid2">
+      <div class="card" data-nav="#/needs" style="cursor:pointer">
+        <h3>📋 需求規劃</h3><span class="pill ${needsStatus.pill}">${needsStatus.label}</span>
+        <div class="dt">${rooms.length} 間房${roomsComplete ? '・' + roomsComplete + ' 間已完成問卷' : ''}</div>
+      </div>
+      <div class="card" data-nav="#/quotes" style="cursor:pointer">
+        <h3>📊 報價比較</h3><span class="pill ${quotesStatus.pill}">${quotesStatus.label}</span>
+        <div class="dt">${quotes.length} 間公司${signedQuote ? '・簽咗「' + esc(signedQuote.company) + '」' : ''}</div>
+      </div>
+      <div class="card" data-nav="#/build" style="cursor:pointer">
+        <h3>📅 工期表</h3><span class="pill ${buildStatus.pill}">${buildStatus.label}</span>
+        <div class="dt">${project.start_date ? dispDate(project.start_date) + ' 開工' : '未設開工日'}</div>
+      </div>
+      <div class="card" data-nav="#/build" style="cursor:pointer">
+        <h3>✅ 驗收記錄</h3><span class="pill ${buildStatus.pill}">${finishedStages}/${stages.length} 工序</span>
+        <div class="dt">已上載 ${photoCount} 張相</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="rowflex"><h3 style="margin:0">Project 設定</h3><button class="iconbtn" id="editProjBtn">✏️ 編輯</button></div>
+      <div class="dt">${flatTypeLabel(project.flat_type)} · ${project.size_sqft || '?'} 呎 · ${scopeLabel(project.scope)} · 預算上限 ${project.budget_cap ? money(project.budget_cap) : '未設'}</div>
+    </div>
+  `;
+  appEl.innerHTML = chromeShell('dashboard', body, projectRowHtml());
+  attachChromeEvents();
+  const editBtn = document.getElementById('editProjBtn');
+  if (editBtn) editBtn.addEventListener('click', () => renderNewProjectForm(false, project));
+}
+
+function renderNewProjectForm(isFirst, editing) {
+  const p = editing || {};
+  const flatOpts = FLAT_TYPES.map(t => `<option value="${t.value}" ${p.flat_type === t.value ? 'selected' : ''}>${t.label}</option>`).join('');
+  const scopeOpts = SCOPES.map(t => `<option value="${t.value}" ${p.scope === t.value ? 'selected' : ''}>${t.label}</option>`).join('');
+  const body = `
+    <div class="card">
+      <h3>${editing ? '編輯 project' : (isFirst ? '開始你嘅第一個裝修計劃' : '開新 project')}</h3>
+      <label class="f">Project 名稱</label>
+      <input type="text" id="npName" placeholder="例：太古城 480呎" value="${esc(p.name || '')}">
+      <div class="grid2">
+        <div><label class="f">樓型</label><select id="npType">${flatOpts}</select></div>
+        <div><label class="f">實用面積（呎）</label><input type="number" id="npSize" value="${p.size_sqft || 450}" min="100" max="3000"></div>
+        <div><label class="f">工程範圍</label><select id="npScope">${scopeOpts}</select></div>
+        <div><label class="f">預計開工日期</label><input type="date" id="npDate" value="${p.start_date || ''}"></div>
+      </div>
+      <label class="f">預算上限（$，可留空）</label>
+      <input type="number" id="npBudget" value="${p.budget_cap || ''}" min="0">
+      <div class="mtop">
+        <button class="btn" id="npSave">${editing ? '儲存' : '建立 project'}</button>
+        ${editing ? '<button class="btn gh" id="npCancel" style="margin-left:8px">取消</button>' : ''}
+        ${editing ? '<button class="btn danger" id="npDelete" style="margin-left:8px">刪除 project</button>' : ''}
+      </div>
+    </div>`;
+  if (isFirst && !editing) {
+    appEl.innerHTML = `<div class="body">${body}</div>`;
+  } else {
+    appEl.innerHTML = chromeShell('dashboard', body, state.projects.length ? projectRowHtml() : '');
+    attachChromeEvents();
+  }
+  document.getElementById('npSave').addEventListener('click', async () => {
+    const fields = {
+      name: document.getElementById('npName').value.trim() || '未命名 project',
+      flat_type: document.getElementById('npType').value,
+      size_sqft: +document.getElementById('npSize').value || null,
+      scope: document.getElementById('npScope').value,
+      start_date: document.getElementById('npDate').value || null,
+      budget_cap: +document.getElementById('npBudget').value || null,
+    };
+    try {
+      if (editing) {
+        await updateProject(editing.id, fields);
+        toast('已儲存');
+      } else {
+        const created = await createProject(state.user.id, fields);
+        state.currentProjectId = created.id;
+        saveCurrentProjectId(state.user.id, created.id);
+        toast('Project 已建立');
+      }
+      state.forceNewProjectForm = false;
+      renderDashboard();
+    } catch (e) { toast(e.message, true); }
+  });
+  const cancelBtn = document.getElementById('npCancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.forceNewProjectForm = false; renderDashboard(); });
+  const delBtn = document.getElementById('npDelete');
+  if (delBtn) delBtn.addEventListener('click', async () => {
+    if (!confirm(`刪除「${editing.name}」？呢個 project 底下所有房間/報價/工序/相片都會一齊刪走，唔可以復原。`)) return;
+    try {
+      await deleteProject(editing.id);
+      state.currentProjectId = null;
+      saveCurrentProjectId(state.user.id, null);
+      toast('已刪除');
+      renderDashboard();
+    } catch (e) { toast(e.message, true); }
+  });
+}
+
+// ================================================================
+// #/needs — rooms + 4-step wizard + 匯總
+// ================================================================
+const QUICK_ROOMS = ['客飯廳', '主人房', '細房', '廚房', '浴室'];
+
+async function renderNeeds() {
+  if (!(await guard())) return;
+  const project = await resolveProjects();
+  if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
+
+  state.rooms = await listRooms(project.id);
+  if (!state.rooms.find(r => r.id === state.activeRoomId)) {
+    state.activeRoomId = state.rooms.length ? state.rooms[0].id : null;
+    state.needsStep = 0;
+  }
+
+  let bodyHtml;
+  if (!state.rooms.length) {
+    bodyHtml = `
+      <div class="card">
+        <h3>先加返間房</h3>
+        <p class="dt" style="margin-bottom:10px">揀個常見房間，或者自己打名。</p>
+        <div class="chiprow">${QUICK_ROOMS.map(n => `<label style="cursor:pointer"><span data-quickroom="${esc(n)}">＋ ${esc(n)}</span></label>`).join('')}</div>
+        <label class="f">或自訂房名</label>
+        <div class="rowflex"><input type="text" id="newRoomName" placeholder="例：工人房" style="flex:1"><button class="btn" id="addRoomBtn" style="margin-left:8px">加</button></div>
+      </div>`;
+  } else if (state.needsView === 'summary') {
+    bodyHtml = renderNeedsSummary(project);
+  } else {
+    bodyHtml = renderNeedsWizard(project);
+  }
+
+  appEl.innerHTML = chromeShell('needs', bodyHtml, projectRowHtml());
+  attachChromeEvents();
+  attachNeedsEvents(project);
+}
+
+function renderNeedsWizard(project) {
+  const room = state.rooms.find(r => r.id === state.activeRoomId);
+  const roomTabsHtml = `
+    <div class="rowflex">
+      <div class="roomtab" style="flex:1">
+        ${state.rooms.map(r => `<span class="${r.id === state.activeRoomId ? 'on' : ''}" data-room="${r.id}">${esc(r.name)}</span>`).join('')}
+        <span class="add" data-addroom="1">＋</span>
+      </div>
+    </div>`;
+  const topBar = `<div class="rowflex" style="margin-bottom:8px">
+      <div></div>
+      <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
+    </div>`;
+  if (!room) return topBar + roomTabsHtml;
+
+  const step = state.needsStep;
+  const a = room.answers || {};
+  const dots = ROOM_WIZARD_STEPS.map((s, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
+
+  let stepBody = '';
+  if (step === 0) {
+    stepBody = `
+      <h3>${esc(room.name)} · 第 1 步：用途＋大嚿傢俬 🛋️</h3>
+      <label class="f">呢間房主要用途</label>
+      <input type="text" id="f-usage" placeholder="例：睡眠＋工作枱" value="${esc(a.usage || '')}">
+      <label class="f">已有／要留返嘅大型傢俬</label>
+      <input type="text" id="f-furniture" placeholder="例：衣櫃、床架、書枱" value="${esc(a.furniture || '')}">`;
+  } else if (step === 1) {
+    const storage = a.storage || {};
+    const level = storage.level || 'med';
+    stepBody = `
+      <h3>${esc(room.name)} · 第 2 步：儲物量 📦</h3>
+      <label class="f">儲物需求</label>
+      <select id="f-level">
+        <option value="low" ${level==='low'?'selected':''}>少</option>
+        <option value="med" ${level==='med'?'selected':''}>中</option>
+        <option value="high" ${level==='high'?'selected':''}>多</option>
+      </select>
+      <label class="f">需要邊種收納？</label>
+      <div class="chiprow">${STORAGE_TYPE_OPTIONS.map(t => `<label><input type="checkbox" data-storagetype="${esc(t)}" ${(storage.types||[]).includes(t) ? 'checked' : ''}> ${esc(t)}</label>`).join('')}</div>
+      <label class="f">其他收納要求</label>
+      <input type="text" id="f-storagenote" placeholder="例：要放吸塵機同熨衫板" value="${esc(storage.note || '')}">`;
+  } else if (step === 2) {
+    const sockets = a.sockets || {};
+    stepBody = `
+      <h3>${esc(room.name)} · 第 3 步：電掣＋插座＋網絡位 🔌</h3>
+      ${SOCKET_TYPES.map(t => `
+        <label class="f">${t.label}</label>
+        <div class="counter">
+          <button data-ctr="${t.key}" data-delta="-1">−</button>
+          <b id="ctr-${t.key}">${sockets[t.key] || 0}</b>
+          <button data-ctr="${t.key}" data-delta="1">＋</button>
+          <span class="hint">${t.hint}</span>
+        </div>`).join('')}
+      <label class="f">呢間房仲有咩特別電器？</label>
+      <input type="text" id="f-extra" placeholder="例：抽濕機、風扇燈、電熱氈…" value="${esc(sockets.extra || '')}">`;
+  } else {
+    const lighting = a.lighting || {};
+    stepBody = `
+      <h3>${esc(room.name)} · 第 4 步：燈光 💡</h3>
+      <label class="f">主燈開關</label>
+      <select id="f-mainswitch">
+        <option value="single" ${lighting.main_switch!=='double'?'selected':''}>單控（一個位開關）</option>
+        <option value="double" ${lighting.main_switch==='double'?'selected':''}>雙控（房門＋床頭都有開關）</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.85rem"><input type="checkbox" id="f-dimmer" style="width:auto" ${lighting.dimmer?'checked':''}> 需要調光／情景燈掣</label>
+      <label class="f">特別燈光需求</label>
+      <textarea id="f-lightnotes" placeholder="例：床頭閱讀燈、層板灯槽、廚房工作枱燈">${esc(lighting.notes || '')}</textarea>`;
+  }
+
+  return `
+    ${topBar}
+    ${roomTabsHtml}
+    <div class="card">
+      <div class="stepdots">${dots}</div>
+      ${stepBody}
+      <div class="mtop">
+        ${step > 0 ? '<button class="btn gh" data-stepprev="1">← 上一步</button> ' : ''}
+        <button class="btn" data-stepnext="${step < 3 ? '1' : 'save'}">${step < 3 ? '下一步 →' : '完成 ✓'}</button>
+        <button class="iconbtn" data-delroom="${room.id}" style="float:right" title="刪除呢間房">🗑️ 刪除房間</button>
+      </div>
+    </div>
+    <div class="note good">✨ 逐間房行完 4 步之後，撳上面「需求書＋掣位清單」自動生成兩份文件，可以複製／下載 .txt／print。</div>
+  `;
+}
+
+function renderNeedsSummary(project) {
+  const brief = generateBrief(project, state.rooms);
+  const socketRows = [];
+  state.rooms.forEach(r => {
+    const s = (r.answers && r.answers.sockets) || {};
+    SOCKET_TYPES.forEach(t => {
+      const qty = s[t.key] || 0;
+      if (qty > 0) socketRows.push(`<tr><td>${esc(r.name)}</td><td>${t.label}</td><td>${qty}</td><td>${t.height}</td></tr>`);
+    });
+    if (s.extra) socketRows.push(`<tr><td>${esc(r.name)}</td><td>其他電器</td><td>—</td><td>${esc(s.extra)}</td></tr>`);
+  });
+  return `
+    <div class="rowflex" style="margin-bottom:8px">
+      <button class="btn gh sm" data-view="wizard">← 返回房間問卷</button>
+    </div>
+    <div class="card">
+      <div class="rowflex"><h3 style="margin:0">📄 需求書</h3>
+        <div><button class="btn sm" data-copy="brief">複製</button> <button class="btn gh sm" data-dl="brief">下載 .txt</button></div>
+      </div>
+      <div class="copybox" id="briefBox">${esc(brief)}</div>
+    </div>
+    <div class="card">
+      <div class="rowflex"><h3 style="margin:0">🔌 全屋掣位清單</h3>
+        <div><button class="btn sm" data-copy="socket">複製</button> <button class="btn gh sm" data-dl="socket">下載 .txt</button></div>
+      </div>
+      <div class="tbwrap">
+        <table class="tb"><tr><th>位置</th><th>類型</th><th>數量</th><th>建議高度</th></tr>
+          ${socketRows.length ? socketRows.join('') : '<tr><td colspan="4" class="dt">未有房間填咗電掣位資料</td></tr>'}
+        </table>
+      </div>
+    </div>
+    <button class="btn gh" onclick="window.print()">🖨️ Print</button>
+  `;
+}
+
+function attachNeedsEvents(project) {
+  appEl.querySelectorAll('[data-quickroom]').forEach(el => el.addEventListener('click', () => quickAddRoom(project, el.dataset.quickroom)));
+  const addBtn = document.getElementById('addRoomBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    const name = document.getElementById('newRoomName').value.trim();
+    if (name) quickAddRoom(project, name);
+  });
+  appEl.querySelectorAll('[data-room]').forEach(el => el.addEventListener('click', () => {
+    state.activeRoomId = el.dataset.room; state.needsStep = 0; state.needsView = 'wizard'; renderNeeds();
+  }));
+  appEl.querySelectorAll('[data-addroom]').forEach(el => el.addEventListener('click', () => {
+    const name = prompt('新房間叫咩名？'); if (name && name.trim()) quickAddRoom(project, name.trim());
+  }));
+  appEl.querySelectorAll('[data-view]').forEach(el => el.addEventListener('click', () => { state.needsView = el.dataset.view; renderNeeds(); }));
+  appEl.querySelectorAll('[data-delroom]').forEach(el => el.addEventListener('click', async () => {
+    if (!confirm('刪除呢間房？呢間房嘅問卷答案會一齊刪走。')) return;
+    try { await deleteRoom(el.dataset.delroom); toast('已刪除'); state.activeRoomId = null; renderNeeds(); }
+    catch (e) { toast(e.message, true); }
+  }));
+  appEl.querySelectorAll('[data-copy]').forEach(el => el.addEventListener('click', () => {
+    const text = el.dataset.copy === 'brief' ? generateBrief(project, state.rooms) : generateSocketListText(state.rooms);
+    copyText(text, el);
+  }));
+  appEl.querySelectorAll('[data-dl]').forEach(el => el.addEventListener('click', () => {
+    const isBrief = el.dataset.dl === 'brief';
+    downloadText(isBrief ? '需求書.txt' : '掣位清單.txt', isBrief ? generateBrief(project, state.rooms) : generateSocketListText(state.rooms));
+  }));
+
+  // counters (step 3)
+  appEl.querySelectorAll('[data-ctr]').forEach(el => el.addEventListener('click', () => {
+    const key = el.dataset.ctr; const delta = +el.dataset.delta;
+    const b = document.getElementById('ctr-' + key);
+    const next = Math.max(0, (+b.textContent || 0) + delta);
+    b.textContent = next;
+  }));
+
+  const stepBtn = appEl.querySelector('[data-stepnext]');
+  if (stepBtn) stepBtn.addEventListener('click', async () => {
+    const dir = stepBtn.dataset.stepnext;
+    const room = state.rooms.find(r => r.id === state.activeRoomId);
+    if (!room) return;
+    const answers = Object.assign({}, room.answers || {});
+    const step = state.needsStep;
+    try {
+      if (step === 0) {
+        answers.usage = document.getElementById('f-usage').value.trim();
+        answers.furniture = document.getElementById('f-furniture').value.trim();
+      } else if (step === 1) {
+        answers.storage = {
+          level: document.getElementById('f-level').value,
+          types: Array.from(appEl.querySelectorAll('[data-storagetype]:checked')).map(x => x.dataset.storagetype),
+          note: document.getElementById('f-storagenote').value.trim(),
+        };
+      } else if (step === 2) {
+        const sockets = {};
+        SOCKET_TYPES.forEach(t => { sockets[t.key] = +document.getElementById('ctr-' + t.key).textContent || 0; });
+        sockets.extra = document.getElementById('f-extra').value.trim();
+        answers.sockets = sockets;
+      } else {
+        answers.lighting = {
+          main_switch: document.getElementById('f-mainswitch').value,
+          dimmer: document.getElementById('f-dimmer').checked,
+          notes: document.getElementById('f-lightnotes').value.trim(),
+        };
+      }
+      // optimistic update
+      room.answers = answers;
+      const savedStep = step;
+      await updateRoom(room.id, { answers });
+      if (dir === 'save') { toast('已儲存 ✓'); }
+      else { state.needsStep = savedStep + (+dir); }
+      renderNeeds();
+    } catch (e) { toast(e.message, true); }
+  });
+
+  appEl.querySelectorAll('[data-stepprev]').forEach(el => el.addEventListener('click', () => {
+    state.needsStep = Math.max(0, state.needsStep - 1); renderNeeds();
+  }));
+}
+
+async function quickAddRoom(project, name) {
+  try {
+    const room = await createRoom(state.user.id, project.id, name, state.rooms.length);
+    state.rooms.push(room);
+    state.activeRoomId = room.id;
+    state.needsStep = 0;
+    toast(`已加「${name}」`);
+    renderNeeds();
+  } catch (e) { toast(e.message, true); }
+}
+
+function generateBrief(project, rooms) {
+  const budget = project.budget_cap ? money(project.budget_cap) : '未定';
+  let out = `【裝修需求書】\n單位：${project.name || '（未填）'}\n樓型：${flatTypeLabel(project.flat_type)}\n面積：${project.size_sqft || '?'} 呎\n工程範圍：${scopeLabel(project.scope)}\n預算上限：${budget}\n預計開工：${project.start_date ? dispDate(project.start_date) : '未定'}\n`;
+  rooms.forEach(r => {
+    const a = r.answers || {};
+    out += `\n── ${r.name} ──\n用途：${a.usage || '（未填）'}\n大型傢俬：${a.furniture || '（未填）'}\n儲物需求：${storageText(a.storage)}\n燈光需求：${lightingText(a.lighting)}\n`;
+  });
+  out += `\n想同貴司確認：\n1. 請提供逐項報價（工序＋物料品牌型號＋數量＋單價）\n2. 付款擬分期，每期以驗收合格為準\n3. 請註明工期、延誤安排及保養期範圍`;
+  return out;
+}
+function storageText(storage) {
+  if (!storage) return '（未填）';
+  const levelMap = { low: '少', med: '中', high: '多' };
+  let out = levelMap[storage.level] || '';
+  if (storage.types && storage.types.length) out += (out ? '；' : '') + '需要：' + storage.types.join('、');
+  if (storage.note) out += (out ? '；' : '') + storage.note;
+  return out || '（未填）';
+}
+function lightingText(lighting) {
+  if (!lighting) return '（未填）';
+  let out = '主燈' + (lighting.main_switch === 'double' ? '雙控' : '單控');
+  if (lighting.dimmer) out += '＋調光掣';
+  if (lighting.notes) out += '；' + lighting.notes;
+  return out;
+}
+function generateSocketListText(rooms) {
+  let out = '【全屋掣位清單】\n';
+  rooms.forEach(r => {
+    const s = (r.answers && r.answers.sockets) || {};
+    const lines = [];
+    SOCKET_TYPES.forEach(t => { const qty = s[t.key] || 0; if (qty > 0) lines.push(`　${t.label} × ${qty}　建議高度：${t.height}`); });
+    if (s.extra) lines.push(`　其他：${s.extra}`);
+    if (lines.length) out += `\n${r.name}\n${lines.join('\n')}\n`;
+  });
+  return out;
+}
+
+// ================================================================
+// #/quotes
+// ================================================================
+async function renderQuotes() {
+  if (!(await guard())) return;
+  const project = await resolveProjects();
+  if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
+
+  state.quotes = await listQuotes(project.id);
+
+  const cardsHtml = state.quotes.length ? state.quotes.map(q => quoteCardHtml(q)).join('') : '<div class="empty">未有公司報價，撳下面「＋ 加公司」開始比較。</div>';
+  const compareHtml = state.quotes.length ? compareTableHtml(state.quotes) : '';
+  const formHtml = state.quoteFormOpen ? quoteFormHtml(state.quotes.find(q => q.id === state.editingQuoteId)) : `<button class="btn gh mtop" id="addQuoteBtn">＋ 加公司</button>`;
+
+  const body = `${cardsHtml}${compareHtml}<div class="card">${formHtml}</div>`;
+  appEl.innerHTML = chromeShell('quotes', body, projectRowHtml());
+  attachChromeEvents();
+  attachQuotesEvents(project);
+}
+
+function quoteCardHtml(q) {
+  const score = q.score !== null && q.score !== undefined ? q.score : computeQuoteScore(q.flags);
+  const color = scoreColor(score);
+  const checkedFlags = FLAGS.filter(f => (q.flags || {})[f.key]).map(f => f.label);
+  return `
+    <div class="qcard" ${score < 5 ? 'style="border-color:var(--danger)"' : ''}>
+      <div class="hd"><b>${esc(q.company)} ${q.status === 'signed' ? '<span class="pill g">已簽約</span>' : ''}</b><span class="price ${score < 5 ? 'bad' : ''}">${money(q.total)}</span></div>
+      <div class="bar2"><i style="width:${score*10}%;background:${color}"></i></div>
+      <div class="flagrow"><span class="score" style="color:${color}">風險評分 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>${checkedFlags.length ? ' · ' + checkedFlags.slice(0,3).map(f=>esc(f)+' 🚩').join(' · ') + (checkedFlags.length>3?` 等 ${checkedFlags.length} 項`:'') : ' · 冇剔中紅旗'}
+        ${q.file_path ? ` · <a href="#" data-viewfile="${q.id}">📎 查看報價單</a>` : ''}
+      </div>
+      <div class="mtop">
+        <button class="btn sm gh" data-editquote="${q.id}">編輯</button>
+        ${q.status !== 'signed' ? `<button class="btn sm" data-signquote="${q.id}" style="margin-left:6px">標記已簽約</button>` : `<button class="btn sm gh" data-unsignquote="${q.id}" style="margin-left:6px">取消已簽約</button>`}
+        <button class="iconbtn" data-delquote="${q.id}" style="float:right">🗑️</button>
+      </div>
+    </div>`;
+}
+
+function compareTableHtml(quotes) {
+  const rows = BREAKDOWN_CATS.map(c => `<tr><td>${c.label}</td>${quotes.map(q => `<td>${(q.breakdown && q.breakdown[c.key]) ? money(q.breakdown[c.key]) : '<span style="color:var(--muted)">—</span>'}</td>`).join('')}</tr>`).join('');
+  return `<div class="card"><h3>大類金額對比</h3><div class="tbwrap"><table class="tb">
+    <tr><th>大類</th>${quotes.map(q => `<th>${esc(q.company)}</th>`).join('')}</tr>
+    ${rows}
+    <tr><td><b>總價</b></td>${quotes.map(q => `<td><b>${money(q.total)}</b></td>`).join('')}</tr>
+  </table></div></div>`;
+}
+
+function quoteFormHtml(editing) {
+  const q = editing || { breakdown: {}, flags: {} };
+  const breakdownInputs = BREAKDOWN_CATS.map(c => `
+    <div><label class="f">${c.label}</label><input type="number" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
+  const flagChecks = FLAGS.map(f => `
+    <label><input type="checkbox" data-flag="${f.key}" ${(q.flags && q.flags[f.key]) ? 'checked' : ''}> ${esc(f.label)}${f.weight===2?' <span style="color:var(--danger);font-weight:700">⚠</span>':''}</label>`).join('');
+  return `
+    <h3>${editing ? '編輯報價' : '新增公司報價'}</h3>
+    <label class="f">公司名稱</label>
+    <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
+    <label class="f">總價（$）</label>
+    <input type="number" id="q-total" value="${q.total || ''}" min="0">
+    <label class="f">大類金額</label>
+    <div class="grid2">${breakdownInputs}</div>
+    <label class="f">十條紅旗（剔咗代表呢間公司有呢個問題；⚠ 係重點扣分項）</label>
+    <div class="flaglist">${flagChecks}</div>
+    <label class="f">上載報價單檔案（PDF／相片，可選）</label>
+    <input type="file" id="q-file" accept=".pdf,image/*">
+    <div class="mtop">
+      <button class="btn" id="q-save">${editing ? '儲存' : '加入比較'}</button>
+      <button class="btn gh" id="q-cancel" style="margin-left:8px">取消</button>
+    </div>`;
+}
+
+function attachQuotesEvents(project) {
+  const addBtn = document.getElementById('addQuoteBtn');
+  if (addBtn) addBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes(); });
+  const cancelBtn = document.getElementById('q-cancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.quoteFormOpen = false; state.editingQuoteId = null; renderQuotes(); });
+
+  appEl.querySelectorAll('[data-editquote]').forEach(el => el.addEventListener('click', () => {
+    state.quoteFormOpen = true; state.editingQuoteId = el.dataset.editquote; renderQuotes();
+  }));
+  appEl.querySelectorAll('[data-delquote]').forEach(el => el.addEventListener('click', async () => {
+    if (!confirm('刪除呢間公司報價？')) return;
+    const id = el.dataset.delquote;
+    const backup = state.quotes.slice();
+    state.quotes = state.quotes.filter(q => q.id !== id);
+    renderQuotes();
+    try { await deleteQuote(id); toast('已刪除'); } catch (e) { state.quotes = backup; toast(e.message, true); renderQuotes(); }
+  }));
+  appEl.querySelectorAll('[data-signquote]').forEach(el => el.addEventListener('click', () => toggleQuoteSigned(el.dataset.signquote, true)));
+  appEl.querySelectorAll('[data-unsignquote]').forEach(el => el.addEventListener('click', () => toggleQuoteSigned(el.dataset.unsignquote, false)));
+  appEl.querySelectorAll('[data-viewfile]').forEach(el => el.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    const q = state.quotes.find(x => x.id === el.dataset.viewfile);
+    if (!q || !q.file_path) return;
+    try { const { data, error } = await quoteFileSignedUrl(q.file_path); if (error) throw error; window.open(data.signedUrl, '_blank'); }
+    catch (e) { toast('打開檔案失敗：' + e.message, true); }
+  }));
+
+  const saveBtn = document.getElementById('q-save');
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const company = document.getElementById('q-company').value.trim();
+    if (!company) { toast('請輸入公司名稱', true); return; }
+    const breakdown = {};
+    appEl.querySelectorAll('[data-bd]').forEach(el => { breakdown[el.dataset.bd] = el.value ? +el.value : null; });
+    const flags = {};
+    appEl.querySelectorAll('[data-flag]').forEach(el => { flags[el.dataset.flag] = el.checked; });
+    const total = +document.getElementById('q-total').value || null;
+    const score = computeQuoteScore(flags);
+    const fields = { company, total, breakdown, flags, score };
+    const fileInput = document.getElementById('q-file');
+    try {
+      saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spin"></span>';
+      let quote;
+      if (state.editingQuoteId) {
+        quote = await updateQuote(state.editingQuoteId, fields);
+      } else {
+        quote = await createQuote(state.user.id, project.id, fields);
+      }
+      if (fileInput.files && fileInput.files[0]) {
+        const path = await uploadQuoteFile(state.user.id, quote.id, fileInput.files[0]);
+        await updateQuote(quote.id, { file_path: path });
+      }
+      toast('已儲存');
+      state.quoteFormOpen = false; state.editingQuoteId = null;
+      renderQuotes();
+    } catch (e) { toast(e.message, true); saveBtn.disabled = false; saveBtn.textContent = state.editingQuoteId ? '儲存' : '加入比較'; }
+  });
+}
+
+async function toggleQuoteSigned(id, signed) {
+  const q = state.quotes.find(x => x.id === id);
+  if (!q) return;
+  const prevStatus = q.status;
+  q.status = signed ? 'signed' : 'pending';
+  renderQuotes();
+  try { await updateQuote(id, { status: q.status }); toast(signed ? '已標記簽約' : '已取消簽約'); }
+  catch (e) { q.status = prevStatus; toast(e.message, true); renderQuotes(); }
+}
+
+// ================================================================
+// #/build — 七個工序卡
+// ================================================================
+async function renderBuild() {
+  if (!(await guard())) return;
+  const project = await resolveProjects();
+  if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
+
+  state.stages = await ensureStages(state.user.id, project.id);
+  await Promise.all(state.stages.map(async s => {
+    if (!state.photosByStage[s.id]) {
+      const rows = await listPhotos(s.id);
+      await Promise.all(rows.map(async r => { const { data } = await photoPublicPath(r.path); r.url = data ? data.signedUrl : ''; }));
+      state.photosByStage[s.id] = rows;
+    }
+  }));
+
+  const body = state.stages.map((s, i) => stageCardHtml(s, i)).join('');
+  appEl.innerHTML = chromeShell('build', body, projectRowHtml());
+  attachChromeEvents();
+  attachBuildEvents(project);
+}
+
+function stageCardHtml(stage, idx) {
+  const def = STAGES.find(s => s.k === stage.key);
+  const cls = stage.finished_on ? 'done' : (stage.started_on ? 'now' : '');
+  const pill = stage.finished_on ? '<span class="pill g">完成 ✓</span>' : (stage.started_on ? '<span class="pill o">進行中</span>' : '<span class="pill mut">未開始</span>');
+  const inspectIdx = STAGE_INSPECT_MAP[stage.key];
+  const checklist = inspectIdx !== undefined ? INSPECT[inspectIdx] : null;
+  let checklistHtml = '';
+  if (checklist) {
+    const items = checklist.items;
+    const checked = stage.checklist || {};
+    const doneCount = items.filter((_, i) => checked[i]).length;
+    checklistHtml = `
+      <details class="acc-native" style="margin-top:8px">
+        <summary style="cursor:pointer;font-size:.82rem;color:var(--green);font-weight:700">驗收 checklist（${doneCount}/${items.length}）${checklist.tag ? ' · ' + checklist.tag : ''}</summary>
+        <ul class="chk">
+          ${items.map((it, i) => `<li><input type="checkbox" data-check="${stage.id}:${i}" ${checked[i] ? 'checked' : ''}><span><b>${esc(it[0])}</b><small>${esc(it[1])}</small></span></li>`).join('')}
+        </ul>
+      </details>`;
+  }
+  const photos = state.photosByStage[stage.id] || [];
+  const photosHtml = `
+    <div class="photos">
+      ${photos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delphoto="${stage.id}:${p.id}:${esc(p.path)}">×</button></div>`).join('')}
+      <div class="ph add" data-addphoto="${stage.id}">＋</div>
+    </div>
+    <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" style="display:none">`;
+  return `
+    <div class="stgcard ${cls}">
+      <div class="t"><b>${idx + 1}. ${def.n}</b>${pill}</div>
+      <div class="grid2 mtop">
+        <div><label class="f">開工日期</label><input type="date" data-datefield="${stage.id}:started_on" value="${stage.started_on || ''}"></div>
+        <div><label class="f">完成日期</label><input type="date" data-datefield="${stage.id}:finished_on" value="${stage.finished_on || ''}"></div>
+        <div><label class="f">驗收日期</label><input type="date" data-datefield="${stage.id}:inspected_on" value="${stage.inspected_on || ''}"></div>
+      </div>
+      ${checklistHtml}
+      ${photosHtml}
+      <label class="f">備註</label>
+      <textarea data-notefield="${stage.id}" placeholder="例：主人房加咗一個 LAN 位">${esc(stage.note || '')}</textarea>
+    </div>`;
+}
+
+function attachBuildEvents(project) {
+  appEl.querySelectorAll('[data-datefield]').forEach(el => el.addEventListener('change', async () => {
+    const [stageId, field] = el.dataset.datefield.split(':');
+    const stage = state.stages.find(s => s.id === stageId);
+    const prev = stage[field];
+    stage[field] = el.value || null;
+    // re-render for pill/border update, but keep focus not critical (date input)
+    try {
+      await updateStage(stageId, { [field]: stage[field] });
+      toast('已儲存');
+      renderBuild();
+    } catch (e) { stage[field] = prev; toast(e.message, true); renderBuild(); }
+  }));
+
+  appEl.querySelectorAll('[data-check]').forEach(el => el.addEventListener('change', async () => {
+    const [stageId, itemIdx] = el.dataset.check.split(':');
+    const stage = state.stages.find(s => s.id === stageId);
+    const checklist = Object.assign({}, stage.checklist || {});
+    const prev = Object.assign({}, checklist);
+    checklist[itemIdx] = el.checked;
+    stage.checklist = checklist;
+    try { await updateStage(stageId, { checklist }); }
+    catch (e) { stage.checklist = prev; el.checked = !el.checked; toast(e.message, true); }
+  }));
+
+  const noteTimers = {};
+  appEl.querySelectorAll('[data-notefield]').forEach(el => el.addEventListener('input', () => {
+    const stageId = el.dataset.notefield;
+    clearTimeout(noteTimers[stageId]);
+    noteTimers[stageId] = setTimeout(async () => {
+      const stage = state.stages.find(s => s.id === stageId);
+      const prev = stage.note;
+      stage.note = el.value;
+      try { await updateStage(stageId, { note: el.value }); toast('備註已自動儲存'); }
+      catch (e) { stage.note = prev; toast(e.message, true); }
+    }, 800);
+  }));
+
+  appEl.querySelectorAll('[data-addphoto]').forEach(el => el.addEventListener('click', () => {
+    const stageId = el.dataset.addphoto;
+    const input = appEl.querySelector(`[data-fileinput="${stageId}"]`);
+    input.click();
+  }));
+  appEl.querySelectorAll('[data-fileinput]').forEach(el => el.addEventListener('change', async () => {
+    const stageId = el.dataset.fileinput;
+    if (!el.files || !el.files.length) return;
+    toast('上載緊相片…');
+    try {
+      const rows = await uploadPhotos(state.user.id, project.id, stageId, el.files);
+      state.photosByStage[stageId] = (state.photosByStage[stageId] || []).concat(rows);
+      toast(`已上載 ${rows.length} 張相`);
+      renderBuild();
+    } catch (e) { toast('上載失敗：' + e.message, true); }
+  }));
+  appEl.querySelectorAll('[data-delphoto]').forEach(el => el.addEventListener('click', async () => {
+    const [stageId, photoId, path] = el.dataset.delphoto.split(':');
+    if (!confirm('刪除呢張相？')) return;
+    const backup = state.photosByStage[stageId];
+    state.photosByStage[stageId] = backup.filter(p => p.id !== photoId);
+    renderBuild();
+    try { await deletePhoto(photoId, path); toast('已刪除'); }
+    catch (e) { state.photosByStage[stageId] = backup; toast(e.message, true); renderBuild(); }
+  }));
+}
+</script>
+</body>
+</html>

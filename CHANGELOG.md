@@ -2,6 +2,14 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-07-30 Phase 3 — `app.html` 四大 module 起好
+
+- 起咗 `app.html`（917 行，hash routing 五個 route）、`js/db.js`（`reno_` 前綴五個表 CRUD）、`js/photos.js`（canvas 壓縮≤300KB/1600px+上載 `reno-photos`）、`js/content.js`（由 `index.html` 抽 STAGES/INSPECT，加 §5.3 十條紅旗權重計分）、`css/shared.css`（§2 design tokens）。
+- **順手發現＋補咗一個 Phase 2 遺留 bug**：`js/supabase.js` 原本 `const supabase = window.supabase.createClient(...)` 同 supabase-js UMD bundle 自己嘅頂層 `var supabase` 撞名，跨 `<script>` tag 撞 `SyntaxError`，靜靜整個 app 冧晒（`supabase.auth`/`supabase.from` 全部 undefined）——之前 Phase 2 冇喺瀏覽器實跑過所以冇發現。改用 `window.supabase = window.supabase.createClient(...)` 修正。
+- 驗證：真實（冇 mock）測咗 unauthenticated flow——`#/login` 顯示正常、撳 Google 掣真係發到 `auth/v1/authorize` request、冇 session 全部 route 跳返 login，0 console error。已登入畫面用 mock data layer（唔係 mock UI，UI code 100%真）測 375px 冇爆版+4 個 route 交互正常。主 session 亦用 `node --check` 覆核全部 JS 檔案語法+真實 http server 起頁。
+- ⚠️ 未測：真 Google 登入之後嘅真實 CRUD（RLS 生效／真實檔案上載／多戶口隔離）——卡喺 Phase 2 講嗰個人手步驟（Stephanie 未做 Google Cloud Console + Supabase Dashboard 嗰兩步）。
+- 落地：五個檔案內容用 `reno_` 前綴核對過冇漏（grep 冇搵到任何 unprefixed `projects/rooms/quotes/stages/photos` 表名引用）。
+
 ## 2026-07-30 Phase 2 — `js/auth.js` 寫咗，但真正驗證卡喺人手步驟
 
 - 寫咗 `loginWithGoogle()`／`logout()`／`getSession()`／`requireSession()`＋`onAuthStateChange` 自動跳 `#/dashboard`。
