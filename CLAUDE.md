@@ -14,7 +14,7 @@ Push（`github_push.py` 永不 git CLI・HTTPS・一次 run 一 commit）・寫�
 | `index.html` | 靜態版已完成＋Playwright 驗證通過 — 工期/預算計算器、裝修旅程、設計師溝通指南、驗收清單、伏位警示、術語字典，全部免登入 |
 | `preview.html` | UI mockup（假數據）— Landing／登入／Dashboard／需求+電掣／報價比較／施工驗收 六個屏幕，畀 Stephanie 睇過＋批准 |
 | `CLAUDE_BUILD_SPEC.md` §6 Phase 1（Supabase schema/RLS/storage） | ✅ 已完成（2026-07-30，見 CHANGELOG）——表名由 `projects/rooms/quotes/stages/photos` 改咗做 `reno_` 前綴（共用 project 避免撞名） |
-| §6 Phase 2（Google OAuth Auth） | ⬜ 未開工 |
+| §6 Phase 2（Google OAuth Auth） | 🟡 code 寫咗（`js/auth.js`），卡喺 Stephanie 人手步驟（Google Cloud Console＋Supabase Dashboard，見下面「人手步驟」）先可以真正驗證 |
 | §6 Phase 3（App 四大 module） | ⬜ 未開工 |
 | §6 Phase 4（Landing page） | ⬜ 未開工 |
 | §6 Phase 5（Deploy Vercel） | ⬜ 未開工 |

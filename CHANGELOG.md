@@ -2,6 +2,11 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-07-30 Phase 2 — `js/auth.js` 寫咗，但真正驗證卡喺人手步驟
+
+- 寫咗 `loginWithGoogle()`／`logout()`／`getSession()`／`requireSession()`＋`onAuthStateChange` 自動跳 `#/dashboard`。
+- ⚠️ **未算完成**（02-JUDGMENT §R2 第2格「用家路徑驗過」未過）：Supabase Auth 嘅 Google provider 要喺 Dashboard 開，前提係 Google Cloud Console 攞到 OAuth client id/secret——呢兩步 spec §7 已寫明係「人手步驟，Claude Code 做唔到」，MCP 工具冇對應 API 可以查/設 Auth provider 設定，核實過真係冇（搜過 Supabase MCP 全部 tool）。所以真正「登入 redirect 返嚟有 session」呢條驗收，要 Stephanie 做完先可以驗。
+
 ## 2026-07-30 Phase 1 — Supabase schema + RLS + storage 起好
 
 - 跟 `CLAUDE_BUILD_SPEC.md` §4 起 `reno_projects/reno_rooms/reno_quotes/reno_stages/reno_photos` 五個 table，落喺共用 Supabase project `cmtubaxlniglklmdwlzs`（同 Travel App／daily-novel／sales-trainer／AI老友記 共用）。**表名由 spec 原本嘅 `projects/rooms/quotes/stages/photos` 改做 `reno_` 前綴**——因為呢個 project 係共用嘅，跟現有 `novel_`／`coach_`／`elder_` 命名慣例，避免同其他 app 或未來 table 撞名（spec 寫嗰陣假設係獨立 project，冇診到係共用）。
