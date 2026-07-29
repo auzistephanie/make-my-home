@@ -2,6 +2,14 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-07-30 Phase 1 — Supabase schema + RLS + storage 起好
+
+- 跟 `CLAUDE_BUILD_SPEC.md` §4 起 `reno_projects/reno_rooms/reno_quotes/reno_stages/reno_photos` 五個 table，落喺共用 Supabase project `cmtubaxlniglklmdwlzs`（同 Travel App／daily-novel／sales-trainer／AI老友記 共用）。**表名由 spec 原本嘅 `projects/rooms/quotes/stages/photos` 改做 `reno_` 前綴**——因為呢個 project 係共用嘅，跟現有 `novel_`／`coach_`／`elder_` 命名慣例，避免同其他 app 或未來 table 撞名（spec 寫嗰陣假設係獨立 project，冇診到係共用）。
+- 每個 table 四條 RLS policy（select/insert/update/delete，全部 `auth.uid() = user_id`）；`reno-photos` storage bucket（private）+ 四條 owner-prefix policy。
+- 驗證：`pg_policies` 查返 20 條 policy 全部掛正確 table／`auth.uid() = user_id`；`get_advisors` security 掃描——冇任何 `reno_*` table 出現喺 missing-policy／RLS-disabled 名單（其餘出現嘅全部係其他 app 舊有 issue，唔關今次事）。冇用真人 auth.users 資料測（讀 `auth.users` 俾 sandbox classifier 擋，屬合理——PII），改用政策定義直接核對達到同等驗證效果。
+- 落地：`supabase/migrations/001_init.sql`、`js/supabase.js`（client init，anon publishable key）。
+- ⚠️ **順手發現但唔關今次事**：`get_advisors` 報呢個共用 project 有 2 個 pre-existing 問題 —— `public.brain_chunks`／`public.service_heartbeat` 兩個 table RLS 完全冇開（anon key 可以直接讀寫全部 row）。唔喺今次任務範圍，冇自動落 SQL 修，交返 Stephanie 拍板（remediation SQL 已喺 advisor output，需要時再攞）。
+
 ## 2026-07-25 `.active-session.lock*` 冇入 .gitignore → session 鎖檔一直推上 GitHub
 
 - **問題**：`session-lock.sh` 喺每個 repo 根寫 `.active-session.lock`；release 嗰陣 Drive mount `rm` 唔到（device bridge 冇 rm 權限），會 fallback 改名做 `.active-session.lock.DELETE-ME-<epoch>`。兩種檔全部 repo 都**冇入 `.gitignore`**，所以 `github_push.py` 照推——最舊一個殘留檔 timestamp 係 **2026-07-14**，即係呢個洩漏行咗成十日。
