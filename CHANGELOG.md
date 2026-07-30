@@ -2,13 +2,12 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
-## 2026-07-30 Phase 5 — Deploy 卡喺兩個人手決定/步驟
+## 2026-07-30 Phase 5 — Deploy 完成，live 咗
 
-- Vercel CLI 本身已經用緊 Stephanie 個 auzistephanie 戶口登入（同其他 12 個已上線 project 共用），`make-my-home`／`MakeMyHome` 呢個名未有 project。試過 `vercel --prod` 同 `vercel`（preview）兩個都俾 sandbox classifier 擋（「創建對外可見嘅部署」屬於要問過先做嗰類動作），冇 workaround，交返 Stephanie 揀：
-  1. **批准我跑**：喺 permission 設定加返 Bash 可以行 `vercel` 呢個 project 嘅 deploy 指令，我就照跑（CLI 已登入，一行就得）。
-  2. **佢自己做**（spec §7 原本都係假設呢步要人手）：vercel.com → Import Git Repository → 揀 `auzistephanie/make-my-home`。
-- `vercel.json`（cleanUrls + root rewrite去 `landing.html`）已經寫好推咗，兩條路都唔使再改呢個檔。
-- Production domain 定咗之後，記得加返入 Supabase Auth → URL Configuration（Site URL + redirect allowlist）——呢個亦係人手步驟（spec §7 第3點）。
+- Stephanie 批准喺 `~/.claude/settings.json` 加 `Bash(vercel:*)` permission 之後，用佢已登入嘅 Vercel CLI（同其他 12 個已上線 project 共用戶口）跑 `vercel --prod --yes --name make-my-home` 部署成功。
+- Production URL：**https://make-my-home-xi.vercel.app**（project：`auzistephanies-projects/make-my-home`）。
+- Smoke test（真實 live URL，唔係本地）：`/` 200＋title「裝修無伏 — 香港裝修新手指南」（`vercel.json` root rewrite去 `landing.html` 生效）；`/app` 200＋title「裝修無伏 — MakeMyHome」；`/app.html`／`/landing.html` 各 308 redirect去無副檔名版（`cleanUrls:true` 預期行為，唔係錯）；375px viewport 兩頁都冇 overflow；Playwright 量到 **0 console/page error**。
+- ⚠️ 仲要做（Stephanie）：production domain 出咗（`make-my-home-xi.vercel.app`），要去 [Supabase Auth → URL Configuration](https://supabase.com/dashboard/project/cmtubaxlniglklmdwlzs/auth/url-configuration) 加返 Site URL＋redirect allowlist（spec §7 第3點）——同埋 Phase 2 講嗰個 Google OAuth Console／Provider 設定，兩樣都做完先可以真正登入用。
 
 ## 2026-07-30 Phase 4 — `landing.html`（復古花磚 scroll journey）起好
 
