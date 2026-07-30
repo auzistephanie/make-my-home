@@ -2,6 +2,14 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-07-30 Phase 5 — Deploy 卡喺兩個人手決定/步驟
+
+- Vercel CLI 本身已經用緊 Stephanie 個 auzistephanie 戶口登入（同其他 12 個已上線 project 共用），`make-my-home`／`MakeMyHome` 呢個名未有 project。試過 `vercel --prod` 同 `vercel`（preview）兩個都俾 sandbox classifier 擋（「創建對外可見嘅部署」屬於要問過先做嗰類動作），冇 workaround，交返 Stephanie 揀：
+  1. **批准我跑**：喺 permission 設定加返 Bash 可以行 `vercel` 呢個 project 嘅 deploy 指令，我就照跑（CLI 已登入，一行就得）。
+  2. **佢自己做**（spec §7 原本都係假設呢步要人手）：vercel.com → Import Git Repository → 揀 `auzistephanie/make-my-home`。
+- `vercel.json`（cleanUrls + root rewrite去 `landing.html`）已經寫好推咗，兩條路都唔使再改呢個檔。
+- Production domain 定咗之後，記得加返入 Supabase Auth → URL Configuration（Site URL + redirect allowlist）——呢個亦係人手步驟（spec §7 第3點）。
+
 ## 2026-07-30 Phase 4 — `landing.html`（復古花磚 scroll journey）起好
 
 - 起咗 `landing.html`（8 個 scene：hero → 三大痛點 → 工期計算器 → 預算計算器 → 裝修旅程 7 步 → 伏位警示 8 條 → 術語字典 → 儲存計劃 CTA），每 section 一個色調場景（cream/terracotta-tint/green-tint/dark-ink/danger-tint 輪替），沿用 `preview.html` ①Landing 屏幕嘅深綠+花磚 hero 視覺。`js/content.js` 加咗 `DICT`（21 條術語，由 `index.html` 搬字過紙）；工期計算邏輯直接用返 Phase 3 已有嘅 `STAGES`／`scheduleFactor`，冇重複寫一套新嘅（預算計算嘅 `GRADES` 係 landing 專屬，唔搬入 content.js）。`css/shared.css` 加咗一批 landing 專屬＋通用 class（hero-num/gantt/reminder/journey/trap/dict/searchbar/note.warn 等，刻意寫成通用組件，方便日後 app.html 都用得到）。
