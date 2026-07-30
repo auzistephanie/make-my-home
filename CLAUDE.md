@@ -16,12 +16,12 @@ Push（`github_push.py` 永不 git CLI・HTTPS・一次 run 一 commit）・寫�
 | `CLAUDE_BUILD_SPEC.md` §6 Phase 1（Supabase schema/RLS/storage） | ✅ 已完成（2026-07-30，見 CHANGELOG）——表名由 `projects/rooms/quotes/stages/photos` 改咗做 `reno_` 前綴（共用 project 避免撞名） |
 | §6 Phase 2（Google OAuth Auth） | 🟡 code 寫咗（`js/auth.js`），卡喺 Stephanie 人手步驟（Google Cloud Console＋Supabase Dashboard，見下面「人手步驟」）先可以真正驗證 |
 | §6 Phase 3（App 四大 module） | ✅ 已完成（2026-07-30）——`app.html`＋`js/db.js`/`photos.js`/`content.js`＋`css/shared.css`；真 CRUD 待 OAuth 通咗先可以真正跑（同 Phase 2 卡住嘅係同一個人手步驟） |
-| §6 Phase 4（Landing page） | ⬜ 未開工 |
+| §6 Phase 4（Landing page） | ✅ 已完成（2026-07-30）——`landing.html`＋`js/content.js` 加咗 `DICT`＋`css/shared.css` 加咗 landing 專屬 class；375px Playwright 實測冇爆版、兩個計算器 input→output 同 `index.html` 一致、0 console error；Lighthouse mobile 全部 category ≥90（見 CHANGELOG） |
 | §6 Phase 5（Deploy Vercel） | ⬜ 未開工 |
 
 ## 下一步
 
-跟 `CLAUDE_BUILD_SPEC.md` §6 嘅 5 個 phase 順序起：Supabase schema → Auth → App 四大 module → Landing page（brand-landing-page skill）→ Deploy。每個 phase 完成要過下面 DoD 先落下一個。Phase 1 已完成，而家到 Phase 2（Auth）。
+跟 `CLAUDE_BUILD_SPEC.md` §6 嘅 5 個 phase 順序起：Supabase schema → Auth → App 四大 module → Landing page → Deploy。每個 phase 完成要過下面 DoD 先落下一個。Phase 1–4 已完成，而家到 Phase 5（Deploy）——記得 Phase 2 嗰個人手步驟（Google OAuth）都仲未做，Deploy 之後先可以真正驗證登入＋sessionStorage 銜接 app.html 嗰段。
 
 ## 已鎖定嘅產品決定（唔好重新問）
 

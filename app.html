@@ -82,6 +82,32 @@ const state = {
   photosByStage: {}, // stageId -> [{...row, url}]
 };
 
+// ---------------- landing.html handoff ----------------
+// landing.html's two calculators write a plain object to sessionStorage (key below)
+// then send the user to app.html#/login so they can create an account. auth.js's
+// onAuthStateChange already bounces #/login -> #/dashboard once a session exists, so
+// by the time renderDashboard() runs (fresh login or already-logged-in repeat visit)
+// this key may be sitting there waiting to be turned into a new project. Consumed
+// (read + removed) exactly once per landing visit; unknown/invalid fields are dropped
+// rather than trusted blindly, since sessionStorage content originates from another page.
+const LANDING_PAYLOAD_KEY = 'mmh_landing_payload';
+function consumeLandingPayload() {
+  let raw;
+  try { raw = sessionStorage.getItem(LANDING_PAYLOAD_KEY); } catch (e) { return null; }
+  if (!raw) return null;
+  try { sessionStorage.removeItem(LANDING_PAYLOAD_KEY); } catch (e) { /* ignore */ }
+  let data;
+  try { data = JSON.parse(raw); } catch (e) { return null; }
+  if (!data || typeof data !== 'object') return null;
+  const fields = { name: '由計算器建立嘅 project' };
+  if (FLAT_TYPES.some(t => t.value === data.flat_type)) fields.flat_type = data.flat_type;
+  if (SCOPES.some(t => t.value === data.scope)) fields.scope = data.scope;
+  if (Number(data.size_sqft) > 0) fields.size_sqft = Math.round(Number(data.size_sqft));
+  if (Number(data.budget_cap) > 0) fields.budget_cap = Math.round(Number(data.budget_cap));
+  if (typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date)) fields.start_date = data.start_date;
+  return fields;
+}
+
 function projectKey(userId) { return 'mmh_current_project_' + userId; }
 function loadCurrentProjectId(userId) {
   return localStorage.getItem(projectKey(userId)) || null;
@@ -207,6 +233,17 @@ async function renderLogin() {
 // ================================================================
 async function renderDashboard() {
   if (!(await guard())) return;
+
+  const pendingPayload = consumeLandingPayload();
+  if (pendingPayload) {
+    try {
+      const created = await createProject(state.user.id, pendingPayload);
+      state.currentProjectId = created.id;
+      saveCurrentProjectId(state.user.id, created.id);
+      toast('已用計算器結果幫你開咗個新 project ✓');
+    } catch (e) { toast('自動建立 project 失敗：' + e.message, true); }
+  }
+
   await resolveProjects();
 
   if (!state.projects.length || state.forceNewProjectForm) {

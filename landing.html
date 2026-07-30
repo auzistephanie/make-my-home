@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裝修無伏 / MakeMyHome — 香港裝修新手嘅全程管家</title>
+<meta name="description" content="要預幾耐、點同設計師傾、點樣驗收 — 免費工期／預算計算器、裝修旅程地圖、伏位警示、術語字典，唔使登入都用得。">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/shared.css">
+</head>
+<body>
+
+<main class="landpage">
+
+<!-- ================= HERO ================= -->
+<header class="land-hero" style="--tile-a:#D9A441;--tile-b:#C4622D">
+  <div class="tiles"></div>
+  <h1>裝修無伏</h1>
+  <div class="en">M A K E M Y H O M E</div>
+  <p class="tag">香港裝修新手嘅全程管家 —<br>要預幾耐・點同設計師傾・點樣驗收，一個 app 搞掂</p>
+  <div class="cta">
+    <a class="btn primary" href="app.html">免費開始 →</a>
+    <a class="btn ghost" href="#calc-timeline">先試下計算器</a>
+  </div>
+  <div class="trust">下面全部工具唔使登入都用得 · 覺得有用先開戶口儲低你嘅計劃</div>
+</header>
+
+<!-- ================= 三大痛點 ================= -->
+<section class="landsec sec-cream" id="painpoints">
+  <div class="landsec-inner">
+    <h2 class="sec">裝修新手最大鑊嘅三件事</h2>
+    <p class="sub">唔係做錯，係唔知下一步做咩。</p>
+    <div class="stat-banner">
+      <div class="big">1,205 宗</div>
+      <div class="cap">消委會 7 年錄得裝修投訴，涉款 2.7 億 — 大部分源於呢三個位冇處理好</div>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <b>⏱️ 唔知要預幾耐</b>
+        <p>由「開始諗」到「入住」，全屋翻新普遍要 3–5 個月。想農曆年前入伙，年中就要開始搵公司。</p>
+      </div>
+      <div class="pain-card">
+        <b>🗣️ 唔知點同設計師傾</b>
+        <p>新手同設計師傾偈最大問題：講唔清自己想要咩，又唔知要問咩。</p>
+      </div>
+      <div class="pain-card">
+        <b>✅ 唔知點樣驗收</b>
+        <p>超過七成裝修糾紛源於驗收不足。每個工序完成就即場驗，唔好等埋單先算。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 工期計算器 ================= -->
+<section class="landsec sec-terracotta" id="calc-timeline">
+  <div class="landsec-inner">
+    <h2 class="sec">工期計算器 — 到底要預幾耐？</h2>
+    <p class="sub">輸入單位資料，即刻睇到分階段時間表＋幾時要落訂物料。工期參考行內 2026 年基準，實際以承辦商報價為準。</p>
+    <div class="card">
+      <div class="grid2">
+        <div><label class="f" for="t-type">樓型</label>
+          <select id="t-type">
+            <option value="public">公屋</option>
+            <option value="hos">居屋（清水房）</option>
+            <option value="private" selected>私樓</option>
+            <option value="old">舊樓／唐樓（30 年以上）</option>
+          </select></div>
+        <div><label class="f" for="t-size">實用面積（呎）</label>
+          <input type="number" id="t-size" value="450" min="100" max="3000"></div>
+        <div><label class="f" for="t-scope">工程範圍</label>
+          <select id="t-scope">
+            <option value="full" selected>全屋翻新（拆晒重做）</option>
+            <option value="partial">局部裝修（廚廁＋油漆為主）</option>
+            <option value="light">簡單翻新（油漆＋地板＋執漏）</option>
+          </select></div>
+        <div><label class="f" for="t-date">預計開工日期</label>
+          <input type="date" id="t-date"></div>
+      </div>
+      <button class="btn mtop" id="t-go">計算工期</button>
+    </div>
+    <div id="t-result" style="display:none">
+      <div class="hero-num"><div class="n" id="t-total"></div><div class="l" id="t-range"></div></div>
+      <div class="card">
+        <h3>分階段時間表</h3>
+        <div class="gantt" id="t-gantt"></div>
+        <div class="note">⏱️ 泥水期已包 <b>48 小時浸水試防水</b> — 呢兩日慳唔得，好多滲漏糾紛就係因為冇做。</div>
+      </div>
+      <div class="card">
+        <h3>📌 落訂倒數提醒（最多人中伏嘅位）</h3>
+        <div id="t-reminders"></div>
+        <div class="note warn">⚠️ 進口磁磚／潔具 lead time 一般 <b>4–8 星期</b>，訂造傢俬要喺木工開始前 <b>6–8 星期</b>落單。訂遲咗成條時間表就會冧。</div>
+      </div>
+      <div class="card">
+        <h3>連埋前期，總共要預幾耐？</h3>
+        <div class="tbwrap">
+        <table class="tb">
+          <tr><th>階段</th><th>時間</th></tr>
+          <tr><td>諗需求＋搵公司＋比較報價</td><td>4–8 星期</td></tr>
+          <tr><td>設計＋出圖＋簽約</td><td>2–4 星期</td></tr>
+          <tr><td>施工（上面計嘅）</td><td id="t-buildrow">—</td></tr>
+          <tr><td>執漏＋散味（新傢俬甲醛）</td><td>1–3 星期</td></tr>
+        </table>
+        </div>
+        <div class="note good">💡 由「開始諗」到「入住」，全屋翻新普遍要 <b>3–5 個月</b>。想農曆年前入伙，年中就要開始搵公司。</div>
+      </div>
+      <div class="center mtop">
+        <button class="btn gh" id="t-save">儲存到我嘅 project →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 預算計算器 ================= -->
+<section class="landsec sec-green" id="calc-budget">
+  <div class="landsec-inner">
+    <h2 class="sec">預算計算器</h2>
+    <p class="sub">粗略估算範圍，等你同設計師傾嘅時候心中有數。實際造價受樓齡、物料、訂造傢俬數量影響好大。</p>
+    <div class="card">
+      <div class="grid2">
+        <div><label class="f" for="b-size">實用面積（呎）</label>
+          <input type="number" id="b-size" value="450" min="100" max="3000"></div>
+        <div><label class="f" for="b-grade">裝修檔次</label>
+          <select id="b-grade">
+            <option value="basic">基本實用（約 $600–900/呎）</option>
+            <option value="mid" selected>中檔（約 $900–1,400/呎）</option>
+            <option value="high">高檔／設計主導（$1,500+/呎）</option>
+          </select></div>
+      </div>
+      <button class="btn mtop" id="b-go">估算預算</button>
+    </div>
+    <div id="b-result" style="display:none">
+      <div class="hero-num"><div class="n" id="b-total"></div><div class="l">估算工程費範圍（未計傢俬電器）</div></div>
+      <div class="card">
+        <h3>記得另外預埋呢啲</h3>
+        <div class="tbwrap">
+        <table class="tb">
+          <tr><th>項目</th><th>建議</th></tr>
+          <tr><td><b>應急錢</b>（拆牆先見到嘅暗病、加減工程）</td><td>工程費 10–15%<span id="b-buffer"></span></td></tr>
+          <tr><td>活動傢俬＋電器</td><td>視乎選擇，普遍 $50k–150k</td></tr>
+          <tr><td>管理處裝修按金＋垃圾清運費</td><td>每屋苑唔同，$3k–20k</td></tr>
+          <tr><td>裝修期間租住／搬屋開支</td><td>如需要</td></tr>
+        </table>
+        </div>
+        <div class="note warn">⚠️ 報價明顯低過市價 20% 以上，多數係「低價釣魚」— 開工後先加價。平，唔一定係著數。</div>
+      </div>
+      <div class="center mtop">
+        <button class="btn gh" id="b-save">儲存到我嘅 project →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 裝修旅程 7 步 ================= -->
+<section class="landsec sec-dark" id="journey">
+  <div class="landsec-inner">
+    <h2 class="sec">裝修旅程地圖</h2>
+    <p class="sub">由「諗緊」到「入伙」七個階段。跟住呢條路行就唔會漏。</p>
+    <div class="card">
+      <div class="journey">
+        <div class="jstep"><div class="dot">1</div><div class="bd">
+          <h3>諗清楚需求（開工前 3–6 個月）</h3>
+          <p>全屋定局部？住幾多人？儲存量要幾大？留低所有靈感圖，諗埋 5 年後嘅生活變化（BB？在家工作？）。</p>
+        </div></div>
+        <div class="jstep"><div class="dot">2</div><div class="bd">
+          <h3>定預算（開工前 3–4 個月）</h3>
+          <p>計清楚上限，另外預 10–15% 應急錢（拆開牆先發現嘅問題、加減工程）。切記唔好將應急錢當預算使。</p>
+          <p class="tip">→ 用上面「預算計算器」估個大概範圍</p>
+        </div></div>
+        <div class="jstep"><div class="dot">3</div><div class="bd">
+          <h3>搵設計師／裝修公司（開工前 2–3 個月）</h3>
+          <p>最少搵 3 間報價。查商業登記、睇實體完工案例（唔好淨睇相）、問返舊客感受。設計師 vs 直接搵裝修公司：前者貴 10–20% 但有人幫你把關。</p>
+        </div></div>
+        <div class="jstep"><div class="dot">4</div><div class="bd">
+          <h3>比較報價・簽約（開工前 1–2 個月）</h3>
+          <p>報價單要逐項列明：工序、物料品牌型號、數量、單價。「一口價」「雜項」佔比高係危險訊號。付款最少分 4 期，尾數留到驗收合格先過。</p>
+          <p class="tip">→ 睇下面「伏位警示」嘅報價陷阱</p>
+        </div></div>
+        <div class="jstep"><div class="dot">5</div><div class="bd">
+          <h3>開工前準備（開工前 2–4 星期）</h3>
+          <p>通知管理處攞裝修許可（部分屋苑要按金＋批圖）、通知鄰居、影低單位交吉狀態、確認水電煤戶口。長 lead time 物料（磁磚、潔具、訂造傢俬）呢個時候要落訂。</p>
+          <p class="tip">→ 上面「工期計算器」會幫你倒數幾時要訂料</p>
+        </div></div>
+        <div class="jstep"><div class="dot">6</div><div class="bd">
+          <h3>施工＋分段驗收（6–13 星期）</h3>
+          <p>唔使日日到場，但三個關鍵位一定要親身驗：①水電完成入牆前　②泥水防水完成（48 小時試水）　③完工。每次驗收合格先付該期款。</p>
+        </div></div>
+        <div class="jstep"><div class="dot">7</div><div class="bd">
+          <h3>完工收樓・保養期（入伙後）</h3>
+          <p>執漏清單（snag list）書面列明限期執修。問清楚保養期（行規 3–12 個月）同範圍。留起 5–10% 尾數到執漏完成先付最穩陣。</p>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 伏位警示 8 條 ================= -->
+<section class="landsec sec-warn" id="traps">
+  <div class="landsec-inner">
+    <h2 class="sec">伏位警示廊</h2>
+    <p class="sub">消委會 7 年錄得 1,205 宗裝修投訴、涉款 2.7 億。以下係最常見手法＋拆解方法。</p>
+    <div class="card">
+      <div class="trap"><div class="ic">1</div><div><b>低價釣魚，開工後加價</b><p>報價平過市價兩三成吸你簽約，拆咗牆先話「呢度要加錢」，你騎虎難下。</p><p class="how">拆解：三間報價互相對照；明顯平嘅問清楚點解；合約寫明加減工程計價方式。</p></div></div>
+      <div class="trap"><div class="ic">2</div><div><b>報價單「一口價」／「雜項」灌水</b><p>成張單得幾行，「全屋水電 $XX」冇數量冇型號，之後咩都話「唔包」。</p><p class="how">拆解：逐項列工序＋品牌型號＋數量＋單價；「雜項」超過 5% 要問清楚。</p></div></div>
+      <div class="trap"><div class="ic">3</div><div><b>開工收一半以上訂金</b><p>收咗大額訂金後拖工、甩底，甚至公司結業走佬，追無可追。</p><p class="how">拆解：首期唔超過 20%；分最少 4 期；驗收合格先過數。</p></div></div>
+      <div class="trap"><div class="ic">4</div><div><b>防水 hea 做</b><p>防水係入牆睇唔到嘅工序，最易偷工。搬入去先發現滲水，拆磚重做貴過當初十倍。</p><p class="how">拆解：指明防水物料同層數；泥水後必須 48 小時浸水試驗，落層天花冇印先算合格。</p></div></div>
+      <div class="trap"><div class="ic">5</div><div><b>口頭承諾唔入單</b><p>「呢啲小事送畀你啦」— 埋單就話冇講過，或者做完質素麻麻你冇得追。</p><p class="how">拆解：所有承諾 WhatsApp 覆實或者寫入報價單先算數。</p></div></div>
+      <div class="trap"><div class="ic">6</div><div><b>亂改結構／僭建</b><p>師傅話「呢幅牆拆得」，點知係主力牆或者改咗喉管走位，隨時犯《建築物條例》兼影響全幢安全。</p><p class="how">拆解：涉及拆牆、改廁所廚房位置，要求出則兼問清楚使唔使入紙屋宇署／房署批准。</p></div></div>
+      <div class="trap"><div class="ic">7</div><div><b>用次貨扮正貨</b><p>單上寫 A 牌磁磚／油漆，落貨時換咗平價貨，你唔識睇。</p><p class="how">拆解：物料到場影低包裝箱嘜頭同批號，對返報價單先開工。</p></div></div>
+      <div class="trap"><div class="ic">8</div><div><b>拖工期冇後果</b><p>話兩個月變四個月，你租緊屋雙重開支，佢一句「等緊料」就打發你。</p><p class="how">拆解：合約寫明完工日期＋每日延誤賠償額（例如每日 $500–1,000）。</p></div></div>
+    </div>
+    <div class="note">📋 出事點算？先書面（電郵）向公司提出＋影相存證 → 唔得就搵消委會投訴 → 涉款 $75,000 以下可以入稟小額錢債審裁處，唔使律師。</div>
+  </div>
+</section>
+
+<!-- ================= 術語字典 ================= -->
+<section class="landsec sec-cream" id="dict">
+  <div class="landsec-inner">
+    <h2 class="sec">裝修術語字典</h2>
+    <p class="sub">睇報價單、同師傅溝通前必備。識講行話，冇咁易被人當水魚。</p>
+    <div class="searchbar">
+      <label class="sr-only" for="dict-q">搜尋術語</label>
+      <input type="text" id="dict-q" placeholder="搜尋術語，例如：批盪">
+    </div>
+    <div class="dict" id="dict-list"></div>
+  </div>
+</section>
+
+<!-- ================= 儲存你嘅計劃 CTA ================= -->
+<section class="land-hero land-final" id="cta-final" style="--tile-a:#3E5C50;--tile-b:#D9A441">
+  <div class="tiles"></div>
+  <h2 class="sec" style="color:#F5EFE2;position:relative">儲存你嘅裝修計劃</h2>
+  <p class="tag">開個免費戶口，將啱啱計算嘅工期／預算帶入你嘅 project，仲有需求規劃、報價比較、施工驗收三大工具等緊你。</p>
+  <div class="cta">
+    <button class="btn primary" id="cta-save">免費開始，儲存我嘅計劃 →</button>
+  </div>
+  <div class="chipfree">
+    <span>📅 工期計算器</span><span>💰 預算計算器</span><span>📋 需求規劃</span><span>📊 報價比較</span><span>✅ 施工驗收</span>
+  </div>
+</section>
+
+<div class="footer-note">
+  內容參考《香港裝修指引 2.0》、消委會裝修報價建議及行內公開資料整理，僅供教育參考，唔構成專業意見。<br>
+  實際工期、造價、法規要求以專業人士評估為準。© 2026 裝修無伏
+</div>
+
+</main>
+
+<script src="js/content.js"></script>
+<script>
+/* ============================================================
+   landing.html — 免登入靜態內容 + 兩個互動計算器。
+   計算邏輯：STAGES／scheduleFactor／DICT 全部由 js/content.js
+   提供（Phase 3 已有，工期計算 factor() 就係 scheduleFactor，
+   呢度冇重複寫一套新嘅）。GRADES（預算檔次）係 landing 專屬，
+   冇被其他頁面用到，留喺呢度。
+   ============================================================ */
+
+// ---------- calculator → app.html 銜接：sessionStorage payload ----------
+// calcState 累積兩個計算器最後一次輸入嘅資料；撳「儲存到我嘅 project」時
+// 寫入 sessionStorage，跳去 app.html#/login（已登入會由 auth.js 自動轉
+// #/dashboard）；app.html 嘅 consumeLandingPayload() 負責讀走並建立 project。
+const calcState = {};
+function saveToProject() {
+  try { sessionStorage.setItem('mmh_landing_payload', JSON.stringify(calcState)); } catch (e) { /* ignore */ }
+  location.href = 'app.html#/login';
+}
+
+// ---------- 工期計算（照抄 index.html 邏輯，factor() 換成 content.js 嘅 scheduleFactor）----------
+function fmtD(d) { return (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+document.getElementById('t-go').addEventListener('click', () => {
+  const type = document.getElementById('t-type').value;
+  const size = +document.getElementById('t-size').value || 450;
+  const scope = document.getElementById('t-scope').value;
+  const dateVal = document.getElementById('t-date').value;
+  const f = scheduleFactor(type, size, scope);
+  let lo = 0, hi = 0;
+  const rows = STAGES.map(s => {
+    let slo = Math.max(1, Math.round(s.lo * f)), shi = Math.max(slo, Math.round(s.hi * f));
+    if (scope === 'light' && (s.k === 'me' || s.k === 'wet')) { slo = Math.max(1, Math.round(slo * 0.5)); shi = Math.max(slo, Math.round(shi * 0.5)); }
+    lo += slo; hi += shi; return { ...s, slo, shi };
+  });
+  document.getElementById('t-total').textContent = '約 ' + lo + ' – ' + hi + ' 日';
+  document.getElementById('t-range').textContent = '淨施工期（唔計設計、訂料同執漏）';
+  document.getElementById('t-buildrow').textContent = Math.round(lo / 7) + '–' + Math.ceil(hi / 7) + ' 星期';
+  // gantt
+  let acc = 0; const total = hi; const g = document.getElementById('t-gantt'); g.innerHTML = '';
+  rows.forEach(r => {
+    const left = acc / total * 100, w = r.shi / total * 100; acc += r.shi;
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<div class="nm">' + r.n + (r.note ? '<small>' + r.note + '</small>' : '') + '</div>' +
+      '<div class="track"><div class="bar' + ((left + w) > 78 ? ' end' : '') + '" style="left:' + left + '%;width:' + Math.max(w, 3) + '%"><span>' + r.slo + '–' + r.shi + '日</span></div></div>';
+    g.appendChild(row);
+  });
+  // reminders
+  const rm = document.getElementById('t-reminders'); rm.innerHTML = '';
+  const start = dateVal ? new Date(dateVal + 'T00:00:00') : null;
+  const woodStartLo = rows[0].slo + rows[1].slo + rows[2].slo; // days until wood stage
+  const items = [
+    { off: -42, label: '開工前 6 星期', txt: '落訂磁磚、潔具、廚櫃檯面（進口貨 lead time 4–8 週）' },
+    { off: -14, label: '開工前 2 星期', txt: '通知管理處攞裝修許可＋按金，通知上下左右鄰居' },
+    { off: -7, label: '開工前 1 星期', txt: '影低全屋交吉狀態（連公家走廊），日後有拗撬有證據' },
+    { off: woodStartLo - 42 < 0 ? -35 : woodStartLo - 42, label: '木工前 6 星期', txt: '確認訂造傢俬圖則＋落單（訂造期普遍 6–8 週）', rel: true },
+    { off: rows[0].slo + rows[1].slo, label: '水電完成時', txt: '📍 親身驗收①：入牆前逐條線、逐個掣位核對', rel: true },
+    { off: woodStartLo, label: '泥水完成時', txt: '📍 親身驗收②：48 小時試水＋敲磚驗空鼓', rel: true },
+  ];
+  items.sort((a, b) => a.off - b.off);
+  items.forEach(it => {
+    let dtxt = it.label;
+    if (start) { const d = new Date(start); d.setDate(d.getDate() + it.off); dtxt = fmtD(d) + '前'; }
+    const el = document.createElement('div'); el.className = 'reminder';
+    el.innerHTML = '<span class="d">' + dtxt + '</span><span>' + it.txt + '（' + it.label + '）</span>';
+    rm.appendChild(el);
+  });
+  // feed calcState for the save-to-project handoff
+  calcState.flat_type = type;
+  calcState.size_sqft = size;
+  calcState.scope = scope;
+  calcState.start_date = dateVal || null;
+  document.getElementById('t-result').style.display = 'block';
+  document.getElementById('t-result').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('t-save').addEventListener('click', saveToProject);
+
+// ---------- 預算計算（照抄 index.html 邏輯；GRADES 係 landing 專屬，唔搬入 content.js）----------
+const GRADES = { basic: [600, 900], mid: [900, 1400], high: [1500, 2200] };
+document.getElementById('b-go').addEventListener('click', () => {
+  const size = +document.getElementById('b-size').value || 450;
+  const g = GRADES[document.getElementById('b-grade').value];
+  const lo = size * g[0], hi = size * g[1];
+  const f = n => n >= 10000 ? '$' + (n / 10000).toFixed(0) + '萬' : '$' + n.toLocaleString();
+  document.getElementById('b-total').textContent = f(lo) + ' – ' + f(hi);
+  document.getElementById('b-buffer').textContent = '（即約 ' + f(lo * 0.1) + ' – ' + f(hi * 0.15) + '）';
+  // feed calcState — budget_cap uses the range midpoint, rounded to the nearest $1,000
+  // (a starting suggestion the user can edit later in the project's own settings).
+  calcState.size_sqft = size;
+  calcState.budget_cap = Math.round((lo + hi) / 2 / 1000) * 1000;
+  document.getElementById('b-result').style.display = 'block';
+  document.getElementById('b-result').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('b-save').addEventListener('click', saveToProject);
+
+document.getElementById('cta-save').addEventListener('click', saveToProject);
+
+// ---------- 術語字典（DICT 由 content.js 提供）----------
+const dictList = document.getElementById('dict-list');
+function renderDict(q) {
+  dictList.innerHTML = '';
+  DICT.filter(d => !q || d[0].includes(q) || d[1].includes(q)).forEach(d => {
+    const el = document.createElement('div'); el.className = 'term';
+    el.innerHTML = '<b>' + d[0] + '</b><p>' + d[1] + '</p>';
+    dictList.appendChild(el);
+  });
+  if (!dictList.children.length) dictList.innerHTML = '<div class="term"><p>搵唔到，試下其他字眼</p></div>';
+}
+document.getElementById('dict-q').addEventListener('input', e => renderDict(e.target.value.trim()));
+renderDict('');
+</script>
+</body>
+</html>

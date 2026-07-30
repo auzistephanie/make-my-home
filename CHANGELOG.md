@@ -2,6 +2,15 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-07-30 Phase 4 — `landing.html`（復古花磚 scroll journey）起好
+
+- 起咗 `landing.html`（8 個 scene：hero → 三大痛點 → 工期計算器 → 預算計算器 → 裝修旅程 7 步 → 伏位警示 8 條 → 術語字典 → 儲存計劃 CTA），每 section 一個色調場景（cream/terracotta-tint/green-tint/dark-ink/danger-tint 輪替），沿用 `preview.html` ①Landing 屏幕嘅深綠+花磚 hero 視覺。`js/content.js` 加咗 `DICT`（21 條術語，由 `index.html` 搬字過紙）；工期計算邏輯直接用返 Phase 3 已有嘅 `STAGES`／`scheduleFactor`，冇重複寫一套新嘅（預算計算嘅 `GRADES` 係 landing 專屬，唔搬入 content.js）。`css/shared.css` 加咗一批 landing 專屬＋通用 class（hero-num/gantt/reminder/journey/trap/dict/searchbar/note.warn 等，刻意寫成通用組件，方便日後 app.html 都用得到）。
+- **sessionStorage 銜接 app.html**（spec 冇寫呢段點做，屬於呢次任務要補嘅邏輯）：兩個計算器＋最尾 CTA 撳「儲存到我嘅 project →」會將 `calcState`（flat_type/scope/size_sqft/start_date/budget_cap）寫入 `sessionStorage['mmh_landing_payload']`，跳去 `app.html#/login`（已有 session 會由現有 `auth.js` 自動轉 `#/dashboard`）。`app.html` 加咗 `consumeLandingPayload()`，喺 `renderDashboard()` 開頭讀走個 payload（讀完即刪，唔會重複套用），逐個欄位對返 `FLAT_TYPES`/`SCOPES` 驗證先接受，唔信 sessionStorage 嘅內容——冇動 `renderDashboard()` 其餘已驗證過嘅邏輯。
+- 驗證：Playwright 真實行過（唔係淨睇 code）——375px viewport `scrollWidth===clientWidth`，冇任何元素闊過 viewport；工期計算器（私樓/450呎/全屋翻新）輸出「約 35–51 日」「5–8 星期」同 index.html 原本公式手算結果一致；預算計算器（450呎/中檔）輸出「$41萬–$63萬」同手算一致；字典搜尋「批盪」揀中 3 條；`t-save`/`b-save`/`cta-save` 三粒掣寫嘅 `calcState` 內容啱；跨 `landing.html`→`app.html` 嘅真實 file:// 導航後 sessionStorage payload 冇跌失，`consumeLandingPayload()` 對垃圾/惡意輸入（`flat_type:'DROP TABLE'`／負數 `budget_cap`／假日期）逐項過濾冇被整段信晒；landing.html 全程 0 console/page error；順手用 Playwright 開返 app.html 確認呢次加嘅 CSS 冇拖冧佢原本 375px 畫面。
+- **Lighthouse mobile 真係跑到**（起初以為 sandbox 冇 headless Lighthouse，實試先發現 `npx lighthouse` 可以用）：起本地 `python3 -m http.server` 畀 lighthouse 用 http:// 跑（file:// 唔啱），第一輪 accessibility 得 69（label/select 冇 `for`、冇 `<main>` landmark、favicon 404）；修完（`label for=`＋`id`、`<main>`、`<link rel=icon href="data:,">`、dict 搜尋框加 `.sr-only` label）之後全部 category ≥90：performance 100／accessibility 93／best-practices 100／seo 100。剩低嗰粒 accessibility 扣分係 color-contrast（白字 on `--accent` 4.09:1，差 4.5:1 先夠）——**冇改**，因為 (1) `--accent` 係 spec §2 鎖死嘅 token，(2) `.dict .term b`／`.footer-note` 兩個扣分位係 `index.html` 原本已有嘅同一組合，一齊改就同「靜態內容/文案唔使重寫」原則有衝突，交返 Stephanie 拍板要唔要動個 token。
+- ⚠️ **同 spec 有出入嘅位**：`index.html` 嘅裝修旅程第 4 步文案講「伏位警示的 11 大報價陷阱」，但 `traps`/`INSPECT` 相關列表實際只有 8 條（spec §5.1 都寫「伏位警示 8 條」）——跟咗 spec 同實際列表數量（8），`index.html` 嗰句「11 大」係佢自己文案入面嘅舊講法唔啱數，冇跟住抄錯。
+- 未做：真實 Google 登入之後嘅 end-to-end 驗證（自動建新 project 嗰段 `createProject` call）——同 Phase 2/3 一樣卡喺 Stephanie 未做嘅 Google Cloud Console／Supabase Dashboard 人手步驟；`consumeLandingPayload()` 純邏輯已喺 app.html 頁面環境入面直接單元測過（sessionStorage 讀寫＋驗證＋一次性消費），但冇跟住行到真登入完成建 project 嗰步。
+
 ## 2026-07-30 Phase 3 — `app.html` 四大 module 起好
 
 - 起咗 `app.html`（917 行，hash routing 五個 route）、`js/db.js`（`reno_` 前綴五個表 CRUD）、`js/photos.js`（canvas 壓縮≤300KB/1600px+上載 `reno-photos`）、`js/content.js`（由 `index.html` 抽 STAGES/INSPECT，加 §5.3 十條紅旗權重計分）、`css/shared.css`（§2 design tokens）。
