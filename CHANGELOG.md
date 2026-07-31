@@ -2,6 +2,8 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-07-31：`.gitignore` 加 `*.bak-*` 第二道防線 — 配合 06-STANDARDS §S3「備份一律開喺 `_to_delete/`」，就算漏咗 mv 都唔會畀 `github_push.py` 誤推上 GitHub（2026-07-25 事故嘅根治）。本 repo 冇 governance `backups/`，所以唔需要 negation 例外。
+
 ## 2026-07-30 Phase 5 — Deploy 完成，live 咗
 
 - Stephanie 批准喺 `~/.claude/settings.json` 加 `Bash(vercel:*)` permission 之後，用佢已登入嘅 Vercel CLI（同其他 12 個已上線 project 共用戶口）跑 `vercel --prod --yes --name make-my-home` 部署成功。
