@@ -49,4 +49,4 @@ Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做
 
 ## Project 存放位置
 
-`~/Desktop/Stephanie-Google Drive/dev/MakeMyHome/`（Stephanie 所有新 project 嘅固定存放規則）
+`~/dev/MakeMyHome/`（2026-08-16 由 Google Drive Mirror 搬返嚟，GitHub 係正本）
