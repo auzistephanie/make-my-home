@@ -37,7 +37,7 @@ Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做
 
 完整清單同理由 → `CLAUDE_BUILD_SPEC.md` §1。
 
-## ✅ 完成前檢查（本 repo 專屬 DoD；通用四格 → 02-JUDGMENT §R2）
+## ✅ 完成前檢查（本 repo 專屬 DoD；通用四格 → STANDARDS.md §S2）
 
 1. 靜態頁有改 → 瀏覽器實開 `index.html` 行受影響 flow（例：計算器輸入 → 結果啱）
 2. 起 phase → 對照 `CLAUDE_BUILD_SPEC.md` §6 該 phase 驗收標準逐條過，全過先落下一個
