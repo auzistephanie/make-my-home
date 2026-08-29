@@ -341,7 +341,8 @@ async function renderDashboard() {
   let timingAlert = '';
   if (project.start_date) {
     const days = Math.ceil((new Date(project.start_date + 'T00:00:00') - new Date()) / 86400000);
-    if (days > 0 && !signedQuote) timingAlert = `距離預計開工約 ${days} 日，最好預留時間比較報價同核對合約。`;
+    if (days > 0 && reachedPrepare && !signedContract) timingAlert = `距離預計開工約 ${days} 日，記得加入已簽合約，同埋確認有冇漏項要另外報價。`;
+    else if (days > 0 && !signedQuote) timingAlert = `距離預計開工約 ${days} 日，最好預留時間比較報價同核對合約。`;
     else if (days <= 0 && notStarted) timingAlert = '預計開工日已到，記得更新實際工期狀態。';
   }
 
