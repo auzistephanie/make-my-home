@@ -2,6 +2,12 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-08-30 — 修正 Google 登入錯誤跳去 Travel App
+
+- 根因：MakeMyHome、Travel App 等共用同一個 Supabase project；Auth `Site URL` 係 Travel App，而 redirect allowlist 冇 MakeMyHome，所以 Google OAuth 完成後將 MakeMyHome callback 當成不允許網址，fallback 去 Travel App。
+- 修正：Supabase Authentication → URL Configuration 新增 `https://make-my-home-xi.vercel.app/**`；保留原有 Site URL 同其餘 4 條 redirect URL，冇影響 Travel App／其他 app。
+- 真實 browser 驗證：由 `https://make-my-home-xi.vercel.app/app#/login` 撳「用 Google 帳戶繼續」完成 Google OAuth，callback 返回 MakeMyHome `/app`，route 進入 `#/dashboard`，並顯示新版「30 秒設定」第一步；冇再跳去 Travel App。
+
 ## 2026-08-29 — 新版 Dashboard＋首次使用流程
 
 - 新用家第一次登入、未有 project 時，改行 3 步 onboarding：目前裝修階段 → 單位基本資料 → 最想解決嘅事；完成後先建立 project，唔再一入 app 就直接面對普通資料表格。
