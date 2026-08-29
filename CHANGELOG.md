@@ -2,6 +2,13 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-08-29 — 新版 Dashboard＋首次使用流程
+
+- 新用家第一次登入、未有 project 時，改行 3 步 onboarding：目前裝修階段 → 單位基本資料 → 最想解決嘅事；完成後先建立 project，唔再一入 app 就直接面對普通資料表格。
+- Dashboard 由四張功能狀態卡改成行動主導首頁：顯示「而家最應該做」、按資料計算整體進度、五步裝修路線、由開工日倒數嘅三個期限，同埋時間風險提醒。首次設定揀咗「比較報價／準備開工／施工中」時，下一步亦會優先帶去相應 module。
+- 底部導航統一為「今日／規劃／揀公司／施工」；報價卡原本容易誤解嘅「風險評分」改名做「報價安全度」（高分代表較安全）。
+- 今次只改 `app.html`、`css/shared.css` 同本記錄；冇改 database schema、Supabase migration、RLS、既有 CRUD 或 landing page。
+
 - 2026-08-01（承 07-31 制度複檢）：**`scripts/github_push.py` 修靜默故障** — 舊版 `_PUSH_STATE_DIR` 用 `os.path.dirname(REPO)` 當 stephanie-personal 係隔籬 folder；04-MAINTENANCE §6 將 5 個 repo 搬出 Drive Mirror 後假設崩咗，`makedirs` 靜靜咁喺 `~/Desktop/dev`、`~/dev`、`daily-novel/` 開咗 3 個假 stephanie-personal，concurrent-push 偵測對 6 個 repo 死咗都冇人知（真 state 檔停留喺 7/26–7/30）。改為 `STEPHANIE_PERSONAL_DIR` 環境變數 → Drive 正本絕對路徑 → legacy sibling 三段 resolve，搵唔到就**唔寫兼出聲**（S5「死咗邊個會知」）。12 份 script 一齊改，py_compile 全過，sales-trainer 實跑驗證真 state 有更新。假 folder 已收入 `_to_delete/`。
 
 - 2026-07-31：`.gitignore` 加 `*.bak-*` 第二道防線 — 配合 06-STANDARDS §S3「備份一律開喺 `_to_delete/`」，就算漏咗 mv 都唔會畀 `github_push.py` 誤推上 GitHub（2026-07-25 事故嘅根治）。本 repo 冇 governance `backups/`，所以唔需要 negation 例外。

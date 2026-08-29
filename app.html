@@ -80,6 +80,11 @@ const state = {
   editingQuoteId: null,
   stages: [],
   photosByStage: {}, // stageId -> [{...row, url}]
+  onboardingStep: 0,
+  onboarding: {
+    stage: 'plan',
+    goals: ['budget', 'needs'],
+  },
 };
 
 // ---------------- landing.html handoff ----------------
@@ -109,6 +114,15 @@ function consumeLandingPayload() {
 }
 
 function projectKey(userId) { return 'mmh_current_project_' + userId; }
+function onboardingPrefsKey(userId) { return 'mmh_onboarding_prefs_' + userId; }
+function loadOnboardingPrefs(userId) {
+  try { return JSON.parse(localStorage.getItem(onboardingPrefsKey(userId))) || {}; }
+  catch (e) { return {}; }
+}
+function saveOnboardingPrefs(userId, prefs) {
+  try { localStorage.setItem(onboardingPrefsKey(userId), JSON.stringify(prefs)); }
+  catch (e) { /* preferences are optional; project creation should still work */ }
+}
 function loadCurrentProjectId(userId) {
   return localStorage.getItem(projectKey(userId)) || null;
 }
@@ -171,10 +185,10 @@ async function guard() {
 // ---------------- shared chrome ----------------
 function chromeShell(activeTab, bodyHtml, projRowHtml) {
   const tabs = [
-    { key: 'dashboard', hash: '#/dashboard', ic: '🏠', label: 'Dashboard' },
-    { key: 'needs',     hash: '#/needs',     ic: '📋', label: '需求規劃' },
-    { key: 'quotes',    hash: '#/quotes',    ic: '📊', label: '報價比較' },
-    { key: 'build',     hash: '#/build',     ic: '✅', label: '施工驗收' },
+    { key: 'dashboard', hash: '#/dashboard', ic: '🏠', label: '今日' },
+    { key: 'needs',     hash: '#/needs',     ic: '📋', label: '規劃' },
+    { key: 'quotes',    hash: '#/quotes',    ic: '📑', label: '揀公司' },
+    { key: 'build',     hash: '#/build',     ic: '🧱', label: '施工' },
   ];
   return `
     <div class="apphead">
@@ -246,8 +260,11 @@ async function renderDashboard() {
 
   await resolveProjects();
 
-  if (!state.projects.length || state.forceNewProjectForm) {
-    return renderNewProjectForm(!state.projects.length);
+  if (!state.projects.length) {
+    return renderOnboarding();
+  }
+  if (state.forceNewProjectForm) {
+    return renderNewProjectForm(false);
   }
 
   const project = currentProject();
@@ -262,12 +279,12 @@ async function renderDashboard() {
   const inProgress = stages.find(s => s.started_on && !s.finished_on);
   const allDone = stages.length && stages.every(s => s.finished_on);
   const notStarted = stages.every(s => !s.started_on);
-  let stageBadge, stageTitle, stageNote = '';
+  let stageTitle, stageNote = '';
   if (allDone) {
-    stageBadge = 'g'; stageTitle = '🎉 全部工序已完成';
+    stageTitle = '🎉 全部工序已完成';
   } else if (inProgress) {
     const sDef = STAGES.find(s => s.k === inProgress.key);
-    stageBadge = 'o'; stageTitle = `施工中 — ${sDef.n}`;
+    stageTitle = `施工中 — ${sDef.n}`;
     if (project.start_date) {
       const offsets = scheduleOffsets(project);
       const off = offsets.find(o => o.key === inProgress.key);
@@ -280,52 +297,164 @@ async function renderDashboard() {
     const tip = STAGE_TIPS[inProgress.key];
     if (tip) stageNote += (stageNote ? '<br>' : '') + tip;
   } else if (notStarted) {
-    stageBadge = 'mut'; stageTitle = project.start_date ? `未開工 — 預計 ${dispDate(project.start_date)} 開工` : '未開工';
+    stageTitle = project.start_date ? `未開工 — 預計 ${dispDate(project.start_date)} 開工` : '未開工';
   } else {
-    stageBadge = 'o'; stageTitle = '施工中';
+    stageTitle = '施工中';
   }
 
   const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
-  const needsStatus = rooms.length === 0 ? { pill: 'mut', label: '未開始' } : (roomsComplete === rooms.length ? { pill: 'g', label: '已完成' } : { pill: 'o', label: '進行中' });
-
   const signedQuote = quotes.find(q => q.status === 'signed');
-  const quotesStatus = quotes.length === 0 ? { pill: 'mut', label: '未開始' } : (signedQuote ? { pill: 'g', label: '已簽約' } : { pill: 'o', label: `${quotes.length} 間比較中` });
 
-  const finishedStages = stages.filter(s => s.finished_on).length;
-  const buildStatus = finishedStages === 0 ? { pill: 'mut', label: '未開始' } : (finishedStages === stages.length ? { pill: 'g', label: '已完工' } : { pill: 'o', label: `${finishedStages}/${stages.length} 工序` });
+  const routeSteps = [
+    { label: '建立單位資料', done: true },
+    { label: '預算＋需求規劃', done: !!project.budget_cap && roomsComplete > 0, current: !project.budget_cap || roomsComplete === 0 },
+    { label: '比較裝修報價', done: quotes.length >= 3 || !!signedQuote, current: !!project.budget_cap && roomsComplete > 0 && !signedQuote },
+    { label: '簽約＋開工準備', done: !!signedQuote, current: !!signedQuote && notStarted },
+    { label: '施工＋分段驗收', done: allDone, current: !notStarted && !allDone },
+  ];
+  const completedRouteSteps = routeSteps.filter(s => s.done).length;
+  const progress = Math.round(completedRouteSteps / routeSteps.length * 100);
+
+  const onboardingPrefs = loadOnboardingPrefs(state.user.id);
+  let nextAction;
+  if (onboardingPrefs.stage === 'build' && !allDone) nextAction = { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
+  else if (['quote', 'prepare'].includes(onboardingPrefs.stage) && !signedQuote) nextAction = { title: '加入手上嘅裝修報價', desc: '將價錢同紅旗放埋一齊比較，先決定邊間值得再傾。', hash: '#/quotes', action: '加入報價 →' };
+  else if (!project.budget_cap) nextAction = { title: '定低裝修預算上限', desc: '設定上限之後，報價比較先可以幫你指出超支風險。', action: '設定預算 →', edit: true };
+  else if (!rooms.length) nextAction = { title: '加入第一間房', desc: '先由客飯廳開始，整理用途、傢俬、儲物同電掣。', hash: '#/needs', action: '開始規劃 →' };
+  else if (roomsComplete < rooms.length) nextAction = { title: '完成房間需求', desc: `仲有 ${rooms.length - roomsComplete} 間房未完成，完成後就可以匯出需求書。`, hash: '#/needs', action: '繼續規劃 →' };
+  else if (quotes.length < 3) nextAction = { title: '收齊最少 3 份報價', desc: `而家有 ${quotes.length} 份，放埋一齊先容易睇出漏項同可疑低價。`, hash: '#/quotes', action: '加入報價 →' };
+  else if (!signedQuote) nextAction = { title: '核對報價風險', desc: '唔好淨係睇總價；逐項比較品牌、付款期同合約保障。', hash: '#/quotes', action: '開始比較 →' };
+  else if (notStarted) nextAction = { title: '準備第一個施工工序', desc: '確認開工日期，施工期間每完成一段就即場驗收。', hash: '#/build', action: '設定工期 →' };
+  else nextAction = { title: stageTitle, desc: stageNote || '跟住而家工序完成驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
+
+  const deadlineRows = dashboardDeadlines(project.start_date);
+  let timingAlert = '';
+  if (project.start_date) {
+    const days = Math.ceil((new Date(project.start_date + 'T00:00:00') - new Date()) / 86400000);
+    if (days > 0 && !signedQuote) timingAlert = `距離預計開工約 ${days} 日，最好預留時間比較報價同核對合約。`;
+    else if (days <= 0 && notStarted) timingAlert = '預計開工日已到，記得更新實際工期狀態。';
+  }
 
   const body = `
-    <div class="card" style="border-left:5px solid var(--accent)">
-      <span class="pill ${stageBadge}">而家階段</span><b style="font-size:.95rem">${stageTitle}</b>
-      ${stageNote ? `<div class="dt" style="margin-top:6px">${stageNote}</div>` : ''}
+    <div class="dashintro">
+      <div><div class="eyebrow">你今日嘅裝修重點</div><h2>${esc(project.name)}</h2><div class="dt">${project.start_date ? `預計 ${dispDate(project.start_date)} 開工` : '未設定開工日期'}</div></div>
+      <div class="overall"><b>${progress}%</b><span>整體準備</span><div class="miniprog"><i style="width:${progress}%"></i></div></div>
     </div>
-    <div class="grid2">
-      <div class="card" data-nav="#/needs" style="cursor:pointer">
-        <h3>📋 需求規劃</h3><span class="pill ${needsStatus.pill}">${needsStatus.label}</span>
-        <div class="dt">${rooms.length} 間房${roomsComplete ? '・' + roomsComplete + ' 間已完成問卷' : ''}</div>
+    <div class="nextcard">
+      <div><div class="eyebrow">而家最應該做</div><h3>${nextAction.title}</h3><p>${nextAction.desc}</p></div>
+      <button class="btn mustard" id="nextActionBtn">${nextAction.action}</button>
+    </div>
+    ${timingAlert ? `<div class="timingalert">⚠️ <span><b>時間提醒：</b>${timingAlert}</span></div>` : ''}
+    <div class="dashgrid">
+      <div class="card routecard">
+        <div class="rowflex"><h3>你嘅裝修路線</h3><span class="dt">${completedRouteSteps}/${routeSteps.length} 已完成</span></div>
+        <div class="routepath">${routeSteps.map((s, i) => `
+          <div class="routeitem ${s.current ? 'current' : ''} ${s.done ? 'done' : ''}">
+            <i>${s.done ? '✓' : i + 1}</i><span>${s.label}</span><small>${s.done ? '完成' : (s.current ? '而家' : '未開始')}</small>
+          </div>`).join('')}</div>
       </div>
-      <div class="card" data-nav="#/quotes" style="cursor:pointer">
-        <h3>📊 報價比較</h3><span class="pill ${quotesStatus.pill}">${quotesStatus.label}</span>
-        <div class="dt">${quotes.length} 間公司${signedQuote ? '・簽咗「' + esc(signedQuote.company) + '」' : ''}</div>
-      </div>
-      <div class="card" data-nav="#/build" style="cursor:pointer">
-        <h3>📅 工期表</h3><span class="pill ${buildStatus.pill}">${buildStatus.label}</span>
-        <div class="dt">${project.start_date ? dispDate(project.start_date) + ' 開工' : '未設開工日'}</div>
-      </div>
-      <div class="card" data-nav="#/build" style="cursor:pointer">
-        <h3>✅ 驗收記錄</h3><span class="pill ${buildStatus.pill}">${finishedStages}/${stages.length} 工序</span>
-        <div class="dt">已上載 ${photoCount} 張相</div>
+      <div class="card deadlinecard">
+        <div class="rowflex"><h3>嚟緊期限</h3><span class="dt">按開工日倒數</span></div>
+        ${deadlineRows.length ? deadlineRows.map(r => `<div class="deadlinerow"><b>${r.date}</b><span>${r.label}</span></div>`).join('') : '<div class="empty compact">設定開工日期後，呢度會幫你倒數重要期限。</div>'}
       </div>
     </div>
-    <div class="card">
-      <div class="rowflex"><h3 style="margin:0">Project 設定</h3><button class="iconbtn" id="editProjBtn">✏️ 編輯</button></div>
-      <div class="dt">${flatTypeLabel(project.flat_type)} · ${project.size_sqft || '?'} 呎 · ${scopeLabel(project.scope)} · 預算上限 ${project.budget_cap ? money(project.budget_cap) : '未設'}</div>
-    </div>
-  `;
+    <div class="card projectsummary">
+      <div class="rowflex"><h3>Project 設定</h3><button class="iconbtn" id="editProjBtn">✏️ 編輯</button></div>
+      <div class="dt">${flatTypeLabel(project.flat_type)} · ${project.size_sqft || '?'} 呎 · ${scopeLabel(project.scope)} · 預算上限 ${project.budget_cap ? money(project.budget_cap) : '未設'} · ${photoCount} 張施工相</div>
+    </div>`;
   appEl.innerHTML = chromeShell('dashboard', body, projectRowHtml());
   attachChromeEvents();
+  document.getElementById('nextActionBtn').addEventListener('click', () => {
+    if (nextAction.edit) renderNewProjectForm(false, project);
+    else location.hash = nextAction.hash;
+  });
   const editBtn = document.getElementById('editProjBtn');
   if (editBtn) editBtn.addEventListener('click', () => renderNewProjectForm(false, project));
+}
+
+function dashboardDeadlines(startDate) {
+  if (!startDate) return [];
+  const defs = [
+    { days: 90, label: '開始整理房間需求' },
+    { days: 60, label: '收齊最少 3 份報價' },
+    { days: 30, label: '揀定公司及核對合約' },
+  ];
+  return defs.map(d => {
+    const date = new Date(startDate + 'T00:00:00');
+    date.setDate(date.getDate() - d.days);
+    return { date: dispDate(date.toISOString().slice(0, 10)), label: d.label };
+  });
+}
+
+function renderOnboarding() {
+  const step = state.onboardingStep;
+  const data = state.onboarding;
+  const stageChoices = [
+    ['plan', '🧭', '啱啱開始諗', '未定預算，未搵公司'],
+    ['quote', '📑', '比較緊報價', '已經接觸裝修公司'],
+    ['prepare', '🗓️', '準備開工', '已簽約，等緊開工'],
+    ['build', '🧱', '施工中', '要跟進工期同驗收'],
+  ];
+  const goalChoices = [
+    ['budget', '💰', '控制預算', '避免漏項同超支'],
+    ['needs', '🔌', '整理需求', '房間、傢俬、電掣一次過諗清楚'],
+    ['quotes', '🚩', '篩選報價', '比較價錢同合約風險'],
+    ['build', '✅', '施工驗收', '每個工序都有清單同相片'],
+  ];
+  let content;
+  if (step === 0) {
+    content = `<div class="eyebrow">30 秒設定</div><h1>你而家去到裝修邊一步？</h1><p class="onboardlede">揀最接近嘅狀態，我哋會將首頁變成一張只顯示你下一步嘅行動清單。</p>
+      <div class="choicegrid">${stageChoices.map(([key, icon, title, desc]) => `<button class="choicecard ${data.stage === key ? 'selected' : ''}" aria-pressed="${data.stage === key}" data-stagechoice="${key}"><span>${icon}</span><b>${title}</b><small>${desc}</small></button>`).join('')}</div>`;
+  } else if (step === 1) {
+    content = `<div class="eyebrow">你嘅單位</div><h1>先幫你砌好時間同預算框架</h1><p class="onboardlede">只問影響最大嘅資料，其餘可以之後慢慢補。</p>
+      <div class="grid2 onboardform">
+        <div><label class="f">Project 名稱</label><input id="obName" value="${esc(data.name || '')}" placeholder="例：太古城新屋"></div>
+        <div><label class="f">實用面積（呎）</label><input type="number" id="obSize" value="${data.size_sqft || 450}" min="100" max="3000"></div>
+        <div><label class="f">工程範圍</label><select id="obScope">${SCOPES.map(s => `<option value="${s.value}" ${data.scope === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+        <div><label class="f">預計開工日期</label><input type="date" id="obDate" value="${data.start_date || ''}"></div>
+      </div><p class="dt">之後可以喺 Project 設定修改。</p>`;
+  } else {
+    content = `<div class="eyebrow">最想解決嘅事</div><h1>今次最需要我幫你睇實邊幾樣？</h1><p class="onboardlede">可以揀多過一項；首頁會優先顯示相關提醒。</p>
+      <div class="choicegrid">${goalChoices.map(([key, icon, title, desc]) => `<button class="choicecard ${data.goals.includes(key) ? 'selected' : ''}" aria-pressed="${data.goals.includes(key)}" data-goalchoice="${key}"><span>${icon}</span><b>${title}</b><small>${desc}</small></button>`).join('')}</div>`;
+  }
+  appEl.innerHTML = `<div class="onboardhead"><b>裝修無伏</b><small>MAKEMYHOME</small></div><div class="onboardwrap"><div class="onboardsteps">${[0,1,2].map(i => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>${content}<div class="onboardactions">${step ? '<button class="btn gh" id="obBack">← 返回</button>' : '<span></span>'}<button class="btn" id="obNext">${step === 2 ? '建立我嘅計劃 →' : '下一步 →'}</button></div></div>`;
+  appEl.querySelectorAll('[data-stagechoice]').forEach(btn => btn.addEventListener('click', () => { data.stage = btn.dataset.stagechoice; renderOnboarding(); }));
+  appEl.querySelectorAll('[data-goalchoice]').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.goalchoice;
+    data.goals = data.goals.includes(key) ? data.goals.filter(g => g !== key) : data.goals.concat(key);
+    renderOnboarding();
+  }));
+  const back = document.getElementById('obBack');
+  if (back) back.addEventListener('click', () => { state.onboardingStep--; renderOnboarding(); });
+  document.getElementById('obNext').addEventListener('click', async () => {
+    if (step === 0) { state.onboardingStep = 1; return renderOnboarding(); }
+    if (step === 1) {
+      data.name = document.getElementById('obName').value.trim();
+      data.size_sqft = +document.getElementById('obSize').value || 450;
+      data.scope = document.getElementById('obScope').value;
+      data.start_date = document.getElementById('obDate').value || null;
+      if (!data.name) { toast('請幫個 project 改名', true); return; }
+      state.onboardingStep = 2; return renderOnboarding();
+    }
+    if (!data.goals.length) { toast('請揀最少一項', true); return; }
+    const btn = document.getElementById('obNext');
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+    try {
+      const created = await createProject(state.user.id, {
+        name: data.name,
+        size_sqft: data.size_sqft,
+        scope: data.scope || 'full',
+        start_date: data.start_date,
+        flat_type: 'private',
+      });
+      state.currentProjectId = created.id;
+      saveCurrentProjectId(state.user.id, created.id);
+      saveOnboardingPrefs(state.user.id, { stage: data.stage, goals: data.goals });
+      state.onboardingStep = 0;
+      toast('你嘅裝修路線已經準備好 ✓');
+      renderDashboard();
+    } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = '建立我嘅計劃 →'; }
+  });
 }
 
 function renderNewProjectForm(isFirst, editing) {
@@ -709,7 +838,7 @@ function quoteCardHtml(q) {
     <div class="qcard" ${score < 5 ? 'style="border-color:var(--danger)"' : ''}>
       <div class="hd"><b>${esc(q.company)} ${q.status === 'signed' ? '<span class="pill g">已簽約</span>' : ''}</b><span class="price ${score < 5 ? 'bad' : ''}">${money(q.total)}</span></div>
       <div class="bar2"><i style="width:${score*10}%;background:${color}"></i></div>
-      <div class="flagrow"><span class="score" style="color:${color}">風險評分 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>${checkedFlags.length ? ' · ' + checkedFlags.slice(0,3).map(f=>esc(f)+' 🚩').join(' · ') + (checkedFlags.length>3?` 等 ${checkedFlags.length} 項`:'') : ' · 冇剔中紅旗'}
+      <div class="flagrow"><span class="score" style="color:${color}">報價安全度 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>${checkedFlags.length ? ' · ' + checkedFlags.slice(0,3).map(f=>esc(f)+' 🚩').join(' · ') + (checkedFlags.length>3?` 等 ${checkedFlags.length} 項`:'') : ' · 冇剔中紅旗'}
         ${q.file_path ? ` · <a href="#" data-viewfile="${q.id}">📎 查看報價單</a>` : ''}
       </div>
       <div class="mtop">
