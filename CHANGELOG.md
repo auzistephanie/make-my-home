@@ -2,6 +2,13 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+## 2026-08-30 — 已簽約用家改行合約漏項流程
+
+- 修正 onboarding 揀「準備開工／已簽約」後仍然要求比較報價嘅 stage mapping bug：Dashboard 下一步改為「加入已簽合約」；揀「施工中」但未補合約亦會提示補記合約，而唔係倒退去比較主報價。
+- 新增已簽合約表格：公司、合約總額、開工／預計完工日、合約檔案；七大工程範圍逐項揀「已包括／不包括要另行報價／唔確定要問清楚」。沿用 `reno_quotes.flags` JSON 儲存 `_kind`、`_contract_scope`、`_contract_end_date`，冇 database migration。
+- 合約摘要會分開列出「要另行報價」同「要問清楚」；有漏項就提供「為漏項加入報價」，額外報價可標明處理邊個漏項，並顯示主合約＋額外報價暫計總額。
+- Dashboard 裝修路線會按 onboarding 階段略過已完成嘅報價階段；合約仍有漏項時，優先提示處理漏項，避免直接當成可以開工。
+
 ## 2026-08-30 — 修正 Google 登入錯誤跳去 Travel App
 
 - 根因：MakeMyHome、Travel App 等共用同一個 Supabase project；Auth `Site URL` 係 Travel App，而 redirect allowlist 冇 MakeMyHome，所以 Google OAuth 完成後將 MakeMyHome callback 當成不允許網址，fallback 去 Travel App。

@@ -77,6 +77,7 @@ const state = {
   needsView: 'wizard', // 'wizard' | 'summary'
   quotes: [],
   quoteFormOpen: false,
+  contractFormOpen: false,
   editingQuoteId: null,
   stages: [],
   photosByStage: {}, // stageId -> [{...row, url}]
@@ -304,21 +305,30 @@ async function renderDashboard() {
 
   const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
   const signedQuote = quotes.find(q => q.status === 'signed');
+  const signedContract = quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
+  const contractGapCount = signedContract ? contractGaps(signedContract).length : 0;
+  const onboardingPrefs = loadOnboardingPrefs(state.user.id);
+  const reachedPrepare = ['prepare', 'build'].includes(onboardingPrefs.stage);
+  const reachedBuild = onboardingPrefs.stage === 'build';
+  const quoteStepDone = quotes.length >= 3 || !!signedQuote || reachedPrepare;
+  const contractStepDone = !!signedContract || reachedBuild;
 
   const routeSteps = [
     { label: '建立單位資料', done: true },
-    { label: '預算＋需求規劃', done: !!project.budget_cap && roomsComplete > 0, current: !project.budget_cap || roomsComplete === 0 },
-    { label: '比較裝修報價', done: quotes.length >= 3 || !!signedQuote, current: !!project.budget_cap && roomsComplete > 0 && !signedQuote },
-    { label: '簽約＋開工準備', done: !!signedQuote, current: !!signedQuote && notStarted },
-    { label: '施工＋分段驗收', done: allDone, current: !notStarted && !allDone },
+    { label: '預算＋需求規劃', done: !!project.budget_cap && roomsComplete > 0, current: !reachedPrepare && (!project.budget_cap || roomsComplete === 0) },
+    { label: '比較裝修報價', done: quoteStepDone, current: !reachedPrepare && !quoteStepDone && !!project.budget_cap && roomsComplete > 0 },
+    { label: '簽約＋開工準備', done: contractStepDone, current: quoteStepDone && !contractStepDone },
+    { label: '施工＋分段驗收', done: allDone, current: !allDone && (reachedBuild || !notStarted) },
   ];
   const completedRouteSteps = routeSteps.filter(s => s.done).length;
   const progress = Math.round(completedRouteSteps / routeSteps.length * 100);
 
-  const onboardingPrefs = loadOnboardingPrefs(state.user.id);
   let nextAction;
-  if (onboardingPrefs.stage === 'build' && !allDone) nextAction = { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
-  else if (['quote', 'prepare'].includes(onboardingPrefs.stage) && !signedQuote) nextAction = { title: '加入手上嘅裝修報價', desc: '將價錢同紅旗放埋一齊比較，先決定邊間值得再傾。', hash: '#/quotes', action: '加入報價 →' };
+  if (onboardingPrefs.stage === 'prepare' && !signedContract) nextAction = { title: '加入已簽合約', desc: '記錄主合約包咗乜，搵出要另外報價或問清楚嘅工程。', hash: '#/quotes?mode=contract', action: '加入合約 →' };
+  else if (onboardingPrefs.stage === 'build' && !signedContract) nextAction = { title: '補回已簽合約', desc: '施工中都可以補記合約範圍，方便追蹤漏項同額外工程。', hash: '#/quotes?mode=contract', action: '加入合約 →' };
+  else if (contractGapCount > 0) nextAction = { title: `處理合約 ${contractGapCount} 個漏項`, desc: '為未包括嘅工程另外搵公司報價；唔確定嘅項目先向主承辦商問清楚。', hash: '#/quotes', action: '查看漏項 →' };
+  else if (onboardingPrefs.stage === 'build' && !allDone) nextAction = { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
+  else if (onboardingPrefs.stage === 'quote' && !signedQuote) nextAction = { title: '加入手上嘅裝修報價', desc: '將價錢同紅旗放埋一齊比較，先決定邊間值得再傾。', hash: '#/quotes', action: '加入報價 →' };
   else if (!project.budget_cap) nextAction = { title: '定低裝修預算上限', desc: '設定上限之後，報價比較先可以幫你指出超支風險。', action: '設定預算 →', edit: true };
   else if (!rooms.length) nextAction = { title: '加入第一間房', desc: '先由客飯廳開始，整理用途、傢俬、儲物同電掣。', hash: '#/needs', action: '開始規劃 →' };
   else if (roomsComplete < rooms.length) nextAction = { title: '完成房間需求', desc: `仲有 ${rooms.length - roomsComplete} 間房未完成，完成後就可以匯出需求書。`, hash: '#/needs', action: '繼續規劃 →' };
@@ -813,21 +823,104 @@ function generateSocketListText(rooms) {
 // ================================================================
 // #/quotes
 // ================================================================
+const CONTRACT_SCOPES = [
+  { key: 'demo', label: '清拆工程' },
+  { key: 'wet', label: '泥水／防水／鋪磚' },
+  { key: 'me', label: '水電工程' },
+  { key: 'wood', label: '木工／訂造傢俬' },
+  { key: 'paint', label: '油漆工程' },
+  { key: 'install', label: '潔具／燈具／設備安裝' },
+  { key: 'clean', label: '清場／完工清潔' },
+];
+const CONTRACT_SCOPE_STATUS = {
+  included: { label: '已包括', cls: 'g' },
+  external: { label: '要另行報價', cls: 'r' },
+  check: { label: '要問清楚', cls: 'o' },
+};
+
+function contractGaps(contract) {
+  const scope = (contract.flags && contract.flags._contract_scope) || {};
+  return CONTRACT_SCOPES.filter(item => ['external', 'check'].includes(scope[item.key])).map(item => ({ ...item, status: scope[item.key] }));
+}
+
 async function renderQuotes() {
   if (!(await guard())) return;
   const project = await resolveProjects();
   if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
 
   state.quotes = await listQuotes(project.id);
+  const prefs = loadOnboardingPrefs(state.user.id);
+  const contract = state.quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
+  const otherQuotes = state.quotes.filter(q => q !== contract);
+  const wantsContract = ['prepare', 'build'].includes(prefs.stage);
+  if (location.hash.includes('mode=contract') && !contract) state.contractFormOpen = true;
 
-  const cardsHtml = state.quotes.length ? state.quotes.map(q => quoteCardHtml(q)).join('') : '<div class="empty">未有公司報價，撳下面「＋ 加公司」開始比較。</div>';
-  const compareHtml = state.quotes.length ? compareTableHtml(state.quotes) : '';
-  const formHtml = state.quoteFormOpen ? quoteFormHtml(state.quotes.find(q => q.id === state.editingQuoteId)) : `<button class="btn gh mtop" id="addQuoteBtn">＋ 加公司</button>`;
+  let body = '';
+  if (contract) {
+    body += contractCardHtml(contract, otherQuotes);
+  } else if (wantsContract) {
+    body += `<div class="contractintro"><div class="eyebrow">你已經簽約</div><h2>先加入主合約，再睇清楚有冇漏項</h2><p>記錄合約包括範圍；未包嘅工程可以再獨立搵公司報價。</p>${state.contractFormOpen ? '' : '<button class="btn" id="addContractBtn">加入已簽合約 →</button>'}</div>`;
+  }
 
-  const body = `${cardsHtml}${compareHtml}<div class="card">${formHtml}</div>`;
+  if (!wantsContract && !contract) {
+    body += otherQuotes.length ? otherQuotes.map(q => quoteCardHtml(q)).join('') : '<div class="empty">未有公司報價，撳下面「＋ 加公司」開始比較。</div>';
+    body += otherQuotes.length ? compareTableHtml(otherQuotes) : '';
+  } else if (otherQuotes.length) {
+    body += `<div class="sectionlabel">額外工程報價</div>${otherQuotes.map(q => quoteCardHtml(q)).join('')}`;
+  }
+
+  if (state.contractFormOpen) {
+    body += `<div class="card contractformcard">${contractFormHtml(contract && state.editingQuoteId === contract.id ? contract : null, project)}</div>`;
+  } else if (state.quoteFormOpen) {
+    body += `<div class="card">${quoteFormHtml(state.quotes.find(q => q.id === state.editingQuoteId), contract ? contractGaps(contract) : [])}</div>`;
+  } else if (!wantsContract || contract) {
+    body += `<div class="card"><button class="btn gh" id="addQuoteBtn">＋ ${contract ? '為漏項加入報價' : '加公司'}</button></div>`;
+  }
+
   appEl.innerHTML = chromeShell('quotes', body, projectRowHtml());
   attachChromeEvents();
-  attachQuotesEvents(project);
+  attachQuotesEvents(project, contract);
+}
+
+function contractCardHtml(contract, otherQuotes) {
+  const scope = (contract.flags && contract.flags._contract_scope) || {};
+  const gaps = contractGaps(contract);
+  const external = gaps.filter(g => g.status === 'external');
+  const uncertain = gaps.filter(g => g.status === 'check');
+  const extraTotal = otherQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
+  return `<div class="contractcard">
+    <div class="contracthead"><div><div class="eyebrow">已簽主合約</div><h2>${esc(contract.company)}</h2></div><b>${money(contract.total)}</b></div>
+    <div class="contractmeta">${contract.flags._contract_end_date ? `預計 ${dispDate(contract.flags._contract_end_date)} 完工 · ` : ''}${contract.file_path ? `<a href="#" data-viewfile="${contract.id}">📎 查看已簽合約</a>` : '未上載合約檔案'}</div>
+    <div class="contractscope">${CONTRACT_SCOPES.map(item => {
+      const status = CONTRACT_SCOPE_STATUS[scope[item.key]] || CONTRACT_SCOPE_STATUS.check;
+      return `<div><span>${item.label}</span><i class="pill ${status.cls}">${status.label}</i></div>`;
+    }).join('')}</div>
+    ${gaps.length ? `<div class="gapalert"><b>合約仲有 ${gaps.length} 項要處理</b>${external.length ? `<p>要另外報價：${external.map(g => g.label).join('、')}</p>` : ''}${uncertain.length ? `<p>先問清楚：${uncertain.map(g => g.label).join('、')}</p>` : ''}</div>` : '<div class="note good">✓ 七大工程範圍都已確認包括</div>'}
+    ${extraTotal ? `<div class="combinedtotal">主合約 ${money(contract.total)} ＋ 額外報價暫計 ${money(extraTotal)} ＝ <b>${money((+contract.total || 0) + extraTotal)}</b></div>` : ''}
+    <div class="mtop"><button class="btn sm gh" data-editcontract="${contract.id}">編輯合約</button>${gaps.length ? ' <button class="btn sm" id="addMissingQuoteBtn">為漏項加入報價</button>' : ''}</div>
+  </div>`;
+}
+
+function contractFormHtml(editing, project) {
+  const q = editing || { flags: {} };
+  const flags = q.flags || {};
+  const scope = flags._contract_scope || {};
+  const scopeRows = CONTRACT_SCOPES.map(item => `<div class="contractscoperow"><b>${item.label}</b><select data-contract-scope="${item.key}">
+    <option value="included" ${scope[item.key] === 'included' ? 'selected' : ''}>已包括</option>
+    <option value="external" ${scope[item.key] === 'external' ? 'selected' : ''}>不包括，要另行報價</option>
+    <option value="check" ${!scope[item.key] || scope[item.key] === 'check' ? 'selected' : ''}>唔確定，要問清楚</option>
+  </select></div>`).join('');
+  return `<h3>${editing ? '編輯已簽合約' : '加入已簽合約'}</h3>
+    <div class="grid2">
+      <div><label class="f">裝修公司</label><input type="text" id="c-company" value="${esc(q.company || '')}" placeholder="例：安居工程"></div>
+      <div><label class="f">合約總額（$）</label><input type="number" id="c-total" value="${q.total || ''}" min="0"></div>
+      <div><label class="f">開工日期</label><input type="date" id="c-start" value="${project.start_date || ''}"></div>
+      <div><label class="f">預計完工日期</label><input type="date" id="c-end" value="${flags._contract_end_date || ''}"></div>
+    </div>
+    <label class="f">份合約包咗邊啲工程？</label><p class="dt">唔肯定就揀「要問清楚」，唔好當成已包括。</p>
+    <div class="contractscopeform">${scopeRows}</div>
+    <label class="f">上載已簽合約（PDF／相片，可選）</label><input type="file" id="c-file" accept=".pdf,image/*">
+    <div class="mtop"><button class="btn" id="c-save">${editing ? '儲存更改' : '儲存已簽合約'}</button> <button class="btn gh" id="c-cancel">取消</button></div>`;
 }
 
 function quoteCardHtml(q) {
@@ -837,6 +930,7 @@ function quoteCardHtml(q) {
   return `
     <div class="qcard" ${score < 5 ? 'style="border-color:var(--danger)"' : ''}>
       <div class="hd"><b>${esc(q.company)} ${q.status === 'signed' ? '<span class="pill g">已簽約</span>' : ''}</b><span class="price ${score < 5 ? 'bad' : ''}">${money(q.total)}</span></div>
+      ${(q.flags && q.flags._quote_for) ? `<div class="quotefor">處理漏項：${esc(q.flags._quote_for)}</div>` : ''}
       <div class="bar2"><i style="width:${score*10}%;background:${color}"></i></div>
       <div class="flagrow"><span class="score" style="color:${color}">報價安全度 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>${checkedFlags.length ? ' · ' + checkedFlags.slice(0,3).map(f=>esc(f)+' 🚩').join(' · ') + (checkedFlags.length>3?` 等 ${checkedFlags.length} 項`:'') : ' · 冇剔中紅旗'}
         ${q.file_path ? ` · <a href="#" data-viewfile="${q.id}">📎 查看報價單</a>` : ''}
@@ -858,7 +952,7 @@ function compareTableHtml(quotes) {
   </table></div></div>`;
 }
 
-function quoteFormHtml(editing) {
+function quoteFormHtml(editing, missingScopes) {
   const q = editing || { breakdown: {}, flags: {} };
   const breakdownInputs = BREAKDOWN_CATS.map(c => `
     <div><label class="f">${c.label}</label><input type="number" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
@@ -866,6 +960,7 @@ function quoteFormHtml(editing) {
     <label><input type="checkbox" data-flag="${f.key}" ${(q.flags && q.flags[f.key]) ? 'checked' : ''}> ${esc(f.label)}${f.weight===2?' <span style="color:var(--danger);font-weight:700">⚠</span>':''}</label>`).join('');
   return `
     <h3>${editing ? '編輯報價' : '新增公司報價'}</h3>
+    ${missingScopes.length ? `<label class="f">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${(q.flags && q.flags._quote_for) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
     <label class="f">公司名稱</label>
     <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
     <label class="f">總價（$）</label>
@@ -882,11 +977,18 @@ function quoteFormHtml(editing) {
     </div>`;
 }
 
-function attachQuotesEvents(project) {
+function attachQuotesEvents(project, contract) {
+  const addContractBtn = document.getElementById('addContractBtn');
+  if (addContractBtn) addContractBtn.addEventListener('click', () => { state.contractFormOpen = true; renderQuotes(); });
+  const addMissingBtn = document.getElementById('addMissingQuoteBtn');
+  if (addMissingBtn) addMissingBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes(); });
   const addBtn = document.getElementById('addQuoteBtn');
   if (addBtn) addBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes(); });
   const cancelBtn = document.getElementById('q-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', () => { state.quoteFormOpen = false; state.editingQuoteId = null; renderQuotes(); });
+  const cancelContractBtn = document.getElementById('c-cancel');
+  if (cancelContractBtn) cancelContractBtn.addEventListener('click', () => { state.contractFormOpen = false; state.editingQuoteId = null; location.hash = '#/quotes'; renderQuotes(); });
+  appEl.querySelectorAll('[data-editcontract]').forEach(el => el.addEventListener('click', () => { state.contractFormOpen = true; state.editingQuoteId = el.dataset.editcontract; renderQuotes(); }));
 
   appEl.querySelectorAll('[data-editquote]').forEach(el => el.addEventListener('click', () => {
     state.quoteFormOpen = true; state.editingQuoteId = el.dataset.editquote; renderQuotes();
@@ -915,8 +1017,11 @@ function attachQuotesEvents(project) {
     if (!company) { toast('請輸入公司名稱', true); return; }
     const breakdown = {};
     appEl.querySelectorAll('[data-bd]').forEach(el => { breakdown[el.dataset.bd] = el.value ? +el.value : null; });
-    const flags = {};
+    const current = state.quotes.find(q => q.id === state.editingQuoteId);
+    const flags = Object.assign({}, (current && current.flags) || {});
     appEl.querySelectorAll('[data-flag]').forEach(el => { flags[el.dataset.flag] = el.checked; });
+    const quoteFor = document.getElementById('q-quote-for');
+    if (quoteFor) flags._quote_for = quoteFor.value || null;
     const total = +document.getElementById('q-total').value || null;
     const score = computeQuoteScore(flags);
     const fields = { company, total, breakdown, flags, score };
@@ -937,6 +1042,39 @@ function attachQuotesEvents(project) {
       state.quoteFormOpen = false; state.editingQuoteId = null;
       renderQuotes();
     } catch (e) { toast(e.message, true); saveBtn.disabled = false; saveBtn.textContent = state.editingQuoteId ? '儲存' : '加入比較'; }
+  });
+
+  const contractSaveBtn = document.getElementById('c-save');
+  if (contractSaveBtn) contractSaveBtn.addEventListener('click', async () => {
+    const company = document.getElementById('c-company').value.trim();
+    if (!company) { toast('請輸入裝修公司名稱', true); return; }
+    const scope = {};
+    appEl.querySelectorAll('[data-contract-scope]').forEach(el => { scope[el.dataset.contractScope] = el.value; });
+    const startDate = document.getElementById('c-start').value || null;
+    const endDate = document.getElementById('c-end').value || null;
+    const fields = {
+      company,
+      total: +document.getElementById('c-total').value || null,
+      status: 'signed',
+      score: 10,
+      flags: { _kind: 'contract', _contract_scope: scope, _contract_end_date: endDate },
+    };
+    const fileInput = document.getElementById('c-file');
+    try {
+      contractSaveBtn.disabled = true; contractSaveBtn.innerHTML = '<span class="spin"></span>';
+      let saved;
+      if (contract && state.editingQuoteId === contract.id) saved = await updateQuote(contract.id, fields);
+      else saved = await createQuote(state.user.id, project.id, fields);
+      if (fileInput.files && fileInput.files[0]) {
+        const path = await uploadQuoteFile(state.user.id, saved.id, fileInput.files[0]);
+        await updateQuote(saved.id, { file_path: path });
+      }
+      if (startDate !== project.start_date) await updateProject(project.id, { start_date: startDate });
+      state.contractFormOpen = false; state.editingQuoteId = null;
+      location.hash = '#/quotes';
+      toast('已儲存合約同漏項檢查 ✓');
+      renderQuotes();
+    } catch (e) { toast(e.message, true); contractSaveBtn.disabled = false; contractSaveBtn.textContent = contract ? '儲存更改' : '儲存已簽合約'; }
   });
 }
 
