@@ -122,13 +122,38 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
 .contractscoperow b{font-size:.78rem}
 .contractscoperow select{padding:7px 8px;font-size:.77rem}
 .sectionlabel{font-size:.72rem;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:18px 2px 8px}
+.contractdetails{margin-top:12px}
+.contractdetails summary{cursor:pointer;color:var(--green);font-size:.78rem;font-weight:700;padding:4px 0}
+.gapcenter{background:#FFFDF9;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:12px}
+.gapcenterhead h3{font-size:1rem;margin:3px 0}
+.gapcenterhead p{font-size:.77rem;color:var(--ink2);margin:0}
+.gapsummary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+.gapsummary>div{background:#F4EEE2;border-radius:9px;text-align:center;padding:9px 5px}
+.gapsummary b{display:block;font-size:1.15rem}.gapsummary span{font-size:.67rem;color:var(--ink2)}
+.gapsummary .external b{color:var(--danger)}.gapsummary .check b{color:var(--accent)}.gapsummary .included b{color:var(--green)}
+.gapsection{margin-top:13px}.gapsectiontitle{display:flex;justify-content:space-between;font-size:.78rem;font-weight:800;margin-bottom:7px}.gapsectiontitle span{color:var(--muted);font-size:.7rem}
+.gapitem{border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:7px}
+.gapitemhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.gapitemhead b{font-size:.82rem}.gapitemhead p{font-size:.72rem;color:var(--ink2);margin:3px 0 0;line-height:1.45}
+.gapactions{display:flex;gap:6px;margin-top:9px}.quoteprogress{border-top:1px dashed var(--line);color:var(--green);font-size:.69rem;font-weight:700;margin-top:9px;padding-top:8px}
+.responsibilitychoices{display:grid;gap:6px;margin-top:9px}
+.responsibilitychoice{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;border:1px solid var(--line);border-radius:9px;background:#FFFDF9;color:var(--ink);padding:9px 10px;text-align:left;cursor:pointer}
+.responsibilitychoice b{font-size:.77rem}.responsibilitychoice span{font-size:.68rem;color:var(--ink2)}
+.responsibilitychoice.selected{border-color:var(--green);background:var(--green-soft)}
+.handoffcard{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}.handoffcard h3{font-size:1rem;margin:3px 0}
+.handofflist{margin:10px 0}.handoffrow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.handoffrow:last-child{border-bottom:0}.handoffrow b{display:block;font-size:.78rem}.handoffrow span{display:block;color:var(--danger);font-size:.69rem;margin-top:2px}.handoffrow.ready span{color:var(--green)}.handoffrow small{font-size:.66rem;color:var(--muted);text-align:right}
+.handofflock{background:var(--accent-soft);border-radius:9px;color:var(--ink2);font-size:.73rem;padding:9px 10px}
 
 /* ---------- build stages ---------- */
+.buildhandoff{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:13px 14px;margin-bottom:12px}
+.buildhandoff.confirmed{background:var(--green-soft);border-color:var(--green)}.buildhandoff p{font-size:.72rem;color:var(--ink2);margin:3px 0 0}
 .stgcard{border-left:5px solid var(--line);border-radius:10px;background:#FFFDF9;border:1px solid var(--line);padding:12px 14px;margin-bottom:10px}
 .stgcard.done{border-left-color:var(--green)}
 .stgcard.now{border-left-color:var(--accent)}
 .stgcard .t{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .stgcard .t b{font-size:.92rem}
+.stageresponsibility{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;background:var(--danger-soft);border-radius:9px;padding:9px 10px;margin-top:9px}
+.stageresponsibility.ready{background:var(--green-soft)}.stageresponsibility span{font-size:.67rem;color:var(--muted)}.stageresponsibility b{font-size:.78rem}.stageresponsibility small{grid-column:2;font-size:.66rem;color:var(--ink2)}.stageresponsibility a{grid-column:2;font-size:.66rem;color:var(--green);margin-top:3px}
 .dt{font-size:.76rem;color:var(--ink2);margin-top:3px}
 .photos{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .ph{width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,#D8CDB8,#B8AD96);display:flex;align-items:center;justify-content:center;font-size:1.2rem;position:relative;overflow:hidden;flex:0 0 auto}

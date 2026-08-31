@@ -79,6 +79,7 @@ const state = {
   quoteFormOpen: false,
   contractFormOpen: false,
   editingQuoteId: null,
+  prefillQuoteScope: null,
   stages: [],
   photosByStage: {}, // stageId -> [{...row, url}]
   onboardingStep: 0,
@@ -306,12 +307,18 @@ async function renderDashboard() {
   const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
   const signedQuote = quotes.find(q => q.status === 'signed');
   const signedContract = quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
-  const contractGapCount = signedContract ? contractGaps(signedContract).length : 0;
+  const contractGapsNow = signedContract ? contractGaps(signedContract) : [];
+  const contractGapCount = contractGapsNow.length;
+  const contractExternalCount = contractGapsNow.filter(g => g.status === 'external').length;
+  const contractCheckCount = contractGapsNow.filter(g => g.status === 'check').length;
+  const contractOtherQuotes = signedContract ? quotes.filter(q => q !== signedContract) : [];
+  const contractHandoff = handoffStatus(signedContract, contractOtherQuotes);
+  const unassignedExternalCount = contractHandoff.unresolved.filter(item => item.status === 'external').length;
   const onboardingPrefs = loadOnboardingPrefs(state.user.id);
   const reachedPrepare = ['prepare', 'build'].includes(onboardingPrefs.stage);
   const reachedBuild = onboardingPrefs.stage === 'build';
   const quoteStepDone = quotes.length >= 3 || !!signedQuote || reachedPrepare;
-  const contractStepDone = !!signedContract || reachedBuild;
+  const contractStepDone = !!signedContract && contractHandoff.confirmed && !contractHandoff.unresolved.length;
 
   const routeSteps = [
     { label: '建立單位資料', done: true },
@@ -326,7 +333,8 @@ async function renderDashboard() {
   let nextAction;
   if (onboardingPrefs.stage === 'prepare' && !signedContract) nextAction = { title: '加入已簽合約', desc: '記錄主合約包咗乜，搵出要另外報價或問清楚嘅工程。', hash: '#/quotes?mode=contract', action: '加入合約 →' };
   else if (onboardingPrefs.stage === 'build' && !signedContract) nextAction = { title: '補回已簽合約', desc: '施工中都可以補記合約範圍，方便追蹤漏項同額外工程。', hash: '#/quotes?mode=contract', action: '加入合約 →' };
-  else if (contractGapCount > 0) nextAction = { title: `處理合約 ${contractGapCount} 個漏項`, desc: '為未包括嘅工程另外搵公司報價；唔確定嘅項目先向主承辦商問清楚。', hash: '#/quotes', action: '查看漏項 →' };
+  else if (contractHandoff.unresolved.length > 0) nextAction = { title: `開工前仲有 ${contractHandoff.unresolved.length} 項責任未落實`, desc: `${contractCheckCount ? `${contractCheckCount} 項要問清楚` : ''}${contractCheckCount && unassignedExternalCount ? '、' : ''}${unassignedExternalCount ? `${unassignedExternalCount} 項未揀負責公司` : ''}。逐項定好由邊間公司負責。`, hash: '#/quotes', action: '處理責任 →' };
+  else if (signedContract && !contractHandoff.confirmed) nextAction = { title: '確認開工前責任交接', desc: '七大工程已有負責公司；確認一次，再帶住責任清單進入施工。', hash: '#/quotes', action: '確認交接 →' };
   else if (onboardingPrefs.stage === 'build' && !allDone) nextAction = { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
   else if (onboardingPrefs.stage === 'quote' && !signedQuote) nextAction = { title: '加入手上嘅裝修報價', desc: '將價錢同紅旗放埋一齊比較，先決定邊間值得再傾。', hash: '#/quotes', action: '加入報價 →' };
   else if (!project.budget_cap) nextAction = { title: '定低裝修預算上限', desc: '設定上限之後，報價比較先可以幫你指出超支風險。', action: '設定預算 →', edit: true };
@@ -838,10 +846,52 @@ const CONTRACT_SCOPE_STATUS = {
   external: { label: '要另行報價', cls: 'r' },
   check: { label: '要問清楚', cls: 'o' },
 };
+const CONTRACT_SCOPE_QUESTIONS = {
+  demo: '想同你確認，清拆工程包括邊啲位置？清拆、搬運同棄置費係咪已經全部包喺合約？',
+  wet: '想同你確認，泥水、防水同鋪磚包括咩範圍？防水高度、試水安排、磁磚數量同損耗係咪已包？',
+  me: '想同你確認，水電工程包括幾多個插蘇／燈位、咩品牌型號，同埋改位或加位點樣計費？',
+  wood: '想同你確認，木工／訂造傢俬包括邊幾件、物料同五金品牌型號，送貨安裝係咪已包？',
+  paint: '想同你確認，油漆工程包括批盪、底漆同面漆幾多層，用咩品牌系列，同埋修補點計？',
+  install: '想同你確認，潔具、燈具同設備安裝包括邊啲項目？接駁、開孔同額外配件係咪已包？',
+  clean: '想同你確認，合約係咪包括清場同完工清潔？包括幾多次，同埋建築廢料會由邊個處理？',
+};
+const CONTRACT_STAGE_MAP = {
+  demo: 'demo', me: 'me', wet: 'wet', wood: 'wood', paint: 'paint', install: 'fit', clean: 'clean',
+};
 
 function contractGaps(contract) {
   const scope = (contract.flags && contract.flags._contract_scope) || {};
   return CONTRACT_SCOPES.filter(item => ['external', 'check'].includes(scope[item.key])).map(item => ({ ...item, status: scope[item.key] }));
+}
+
+function responsibilityPlan(contract, otherQuotes) {
+  if (!contract) return [];
+  const scope = (contract.flags && contract.flags._contract_scope) || {};
+  return CONTRACT_SCOPES.map(item => {
+    const status = scope[item.key] || 'check';
+    const candidates = otherQuotes.filter(q => q.flags && q.flags._quote_for === item.label);
+    const selectedQuote = candidates.find(q => q.flags && q.flags._responsibility_selected);
+    return {
+      ...item,
+      stageKey: CONTRACT_STAGE_MAP[item.key],
+      status,
+      candidates,
+      selectedQuote,
+      company: status === 'included' ? contract.company : (selectedQuote ? selectedQuote.company : null),
+      source: status === 'included' ? '主合約' : (selectedQuote ? '額外報價' : null),
+      ready: status === 'included' || (status === 'external' && !!selectedQuote),
+    };
+  });
+}
+
+function handoffStatus(contract, otherQuotes) {
+  const plan = responsibilityPlan(contract, otherQuotes);
+  return {
+    plan,
+    readyCount: plan.filter(item => item.ready).length,
+    unresolved: plan.filter(item => !item.ready),
+    confirmed: !!(contract && contract.flags && contract.flags._handoff_confirmed),
+  };
 }
 
 async function renderQuotes() {
@@ -886,19 +936,41 @@ async function renderQuotes() {
 function contractCardHtml(contract, otherQuotes) {
   const scope = (contract.flags && contract.flags._contract_scope) || {};
   const gaps = contractGaps(contract);
-  const external = gaps.filter(g => g.status === 'external');
-  const uncertain = gaps.filter(g => g.status === 'check');
   const extraTotal = otherQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
   return `<div class="contractcard">
     <div class="contracthead"><div><div class="eyebrow">已簽主合約</div><h2>${esc(contract.company)}</h2></div><b>${money(contract.total)}</b></div>
     <div class="contractmeta">${contract.flags._contract_end_date ? `預計 ${dispDate(contract.flags._contract_end_date)} 完工 · ` : ''}${contract.file_path ? `<a href="#" data-viewfile="${contract.id}">📎 查看已簽合約</a>` : '未上載合約檔案'}</div>
-    <div class="contractscope">${CONTRACT_SCOPES.map(item => {
+    ${gaps.length ? contractActionCenterHtml(contract, otherQuotes) : '<div class="note good">✓ 七大工程範圍都已確認包括</div>'}
+    ${contractHandoffHtml(contract, otherQuotes)}
+    <details class="contractdetails" ${gaps.length ? '' : 'open'}><summary>查看七大工程範圍</summary><div class="contractscope">${CONTRACT_SCOPES.map(item => {
       const status = CONTRACT_SCOPE_STATUS[scope[item.key]] || CONTRACT_SCOPE_STATUS.check;
       return `<div><span>${item.label}</span><i class="pill ${status.cls}">${status.label}</i></div>`;
-    }).join('')}</div>
-    ${gaps.length ? `<div class="gapalert"><b>合約仲有 ${gaps.length} 項要處理</b>${external.length ? `<p>要另外報價：${external.map(g => g.label).join('、')}</p>` : ''}${uncertain.length ? `<p>先問清楚：${uncertain.map(g => g.label).join('、')}</p>` : ''}</div>` : '<div class="note good">✓ 七大工程範圍都已確認包括</div>'}
+    }).join('')}</div></details>
     ${extraTotal ? `<div class="combinedtotal">主合約 ${money(contract.total)} ＋ 額外報價暫計 ${money(extraTotal)} ＝ <b>${money((+contract.total || 0) + extraTotal)}</b></div>` : ''}
     <div class="mtop"><button class="btn sm gh" data-editcontract="${contract.id}">編輯合約</button>${gaps.length ? ' <button class="btn sm" id="addMissingQuoteBtn">為漏項加入報價</button>' : ''}</div>
+  </div>`;
+}
+
+function contractActionCenterHtml(contract, otherQuotes) {
+  const gaps = contractGaps(contract);
+  const uncertain = gaps.filter(g => g.status === 'check');
+  const external = gaps.filter(g => g.status === 'external');
+  const includedCount = CONTRACT_SCOPES.length - gaps.length;
+  const scopeQuotes = label => otherQuotes.filter(q => q.flags && q.flags._quote_for === label);
+  return `<div class="gapcenter">
+    <div class="gapcenterhead"><div class="eyebrow">開工前要處理</div><h3>合約仲有 ${gaps.length} 項未落實</h3><p>逐項問清楚、補報價，再確認由邊間公司負責。</p></div>
+    <div class="gapsummary"><div class="external"><b>${external.length}</b><span>要另報價</span></div><div class="check"><b>${uncertain.length}</b><span>要問清楚</span></div><div class="included"><b>${includedCount}</b><span>已包括</span></div></div>
+    ${uncertain.length ? `<div class="gapsection"><div class="gapsectiontitle">第一步：問清楚 <span>${uncertain.length} 項</span></div>${uncertain.map(item => `<div class="gapitem"><div class="gapitemhead"><div><b>${item.label}</b><p>${esc(CONTRACT_SCOPE_QUESTIONS[item.key])}</p></div><i class="pill o">待問</i></div><div class="gapactions"><button class="btn sm" data-copy-question="${item.key}">複製問法</button><button class="btn sm gh" data-resolve-scope="${item.key}">記錄答案</button></div></div>`).join('')}</div>` : ''}
+    ${external.length ? `<div class="gapsection"><div class="gapsectiontitle">${uncertain.length ? '第二步' : '下一步'}：補返漏項 <span>${external.length} 項</span></div>${external.map(item => { const quotes = scopeQuotes(item.label); const selected = quotes.find(q => q.flags && q.flags._responsibility_selected); return `<div class="gapitem"><div class="gapitemhead"><div><b>${item.label}</b><p>主合約不包括；加入報價後，揀定最後由邊間公司負責。</p></div><i class="pill ${selected ? 'g' : 'r'}">${selected ? '已落實' : '漏項'}</i></div><div class="gapactions"><button class="btn sm" data-add-scope-quote="${item.key}">加入報價</button></div>${quotes.length ? `<div class="responsibilitychoices">${quotes.map(q => `<button class="responsibilitychoice ${q === selected ? 'selected' : ''}" data-select-responsibility="${q.id}" data-scope-label="${esc(item.label)}"><b>${esc(q.company)}</b><span>${money(q.total)}${q === selected ? ' · 已選定' : ' · 揀呢間負責'}</span></button>`).join('')}</div><div class="quoteprogress">已有 ${quotes.length} 間報價${quotes.length < 3 ? ` · 仲差 ${3 - quotes.length} 間就可以比較` : ' · 可以開始比較'}</div>` : ''}</div>`; }).join('')}</div>` : ''}
+  </div>`;
+}
+
+function contractHandoffHtml(contract, otherQuotes) {
+  const handoff = handoffStatus(contract, otherQuotes);
+  return `<div class="handoffcard">
+    <div class="rowflex"><div><div class="eyebrow">開工前責任交接</div><h3>${handoff.readyCount}/7 項已有負責公司</h3></div><span class="pill ${handoff.confirmed && !handoff.unresolved.length ? 'g' : (handoff.unresolved.length ? 'o' : 'mut')}">${handoff.confirmed && !handoff.unresolved.length ? '已確認交接' : (handoff.unresolved.length ? `${handoff.unresolved.length} 項未落實` : '待確認')}</span></div>
+    <div class="handofflist">${handoff.plan.map(item => `<div class="handoffrow ${item.ready ? 'ready' : ''}"><div><b>${item.label}</b><span>${item.company ? `${esc(item.company)} · ${item.source}` : (item.status === 'check' ? '要先向主承辦商問清楚' : '未揀定額外報價公司')}</span></div><small>施工：${esc((STAGES.find(s => s.k === item.stageKey) || {}).n || item.label)}</small></div>`).join('')}</div>
+    ${handoff.unresolved.length ? '<div class="handofflock">先處理上面未落實項目；施工頁仍然可以預覽。</div>' : (handoff.confirmed ? '<button class="btn sm gh" data-open-build>查看施工責任 →</button>' : '<button class="btn" id="confirmHandoffBtn">確認交接並進入施工 →</button>')}
   </div>`;
 }
 
@@ -961,7 +1033,7 @@ function quoteFormHtml(editing, missingScopes) {
     <label><input type="checkbox" data-flag="${f.key}" ${(q.flags && q.flags[f.key]) ? 'checked' : ''}> ${esc(f.label)}${f.weight===2?' <span style="color:var(--danger);font-weight:700">⚠</span>':''}</label>`).join('');
   return `
     <h3>${editing ? '編輯報價' : '新增公司報價'}</h3>
-    ${missingScopes.length ? `<label class="f">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${(q.flags && q.flags._quote_for) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
+    ${missingScopes.length ? `<label class="f">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${((q.flags && q.flags._quote_for) || state.prefillQuoteScope) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
     <label class="f">公司名稱</label>
     <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
     <label class="f">總價（$）</label>
@@ -982,17 +1054,52 @@ function attachQuotesEvents(project, contract) {
   const addContractBtn = document.getElementById('addContractBtn');
   if (addContractBtn) addContractBtn.addEventListener('click', () => { state.contractFormOpen = true; renderQuotes(); });
   const addMissingBtn = document.getElementById('addMissingQuoteBtn');
-  if (addMissingBtn) addMissingBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes(); });
+  if (addMissingBtn) addMissingBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; state.prefillQuoteScope = null; renderQuotes(); });
   const addBtn = document.getElementById('addQuoteBtn');
-  if (addBtn) addBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes(); });
+  if (addBtn) addBtn.addEventListener('click', () => { state.quoteFormOpen = true; state.editingQuoteId = null; state.prefillQuoteScope = null; renderQuotes(); });
   const cancelBtn = document.getElementById('q-cancel');
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.quoteFormOpen = false; state.editingQuoteId = null; renderQuotes(); });
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.quoteFormOpen = false; state.editingQuoteId = null; state.prefillQuoteScope = null; renderQuotes(); });
   const cancelContractBtn = document.getElementById('c-cancel');
   if (cancelContractBtn) cancelContractBtn.addEventListener('click', () => { state.contractFormOpen = false; state.editingQuoteId = null; location.hash = '#/quotes'; renderQuotes(); });
   appEl.querySelectorAll('[data-editcontract]').forEach(el => el.addEventListener('click', () => { state.contractFormOpen = true; state.editingQuoteId = el.dataset.editcontract; renderQuotes(); }));
+  appEl.querySelectorAll('[data-copy-question]').forEach(el => el.addEventListener('click', () => copyText(CONTRACT_SCOPE_QUESTIONS[el.dataset.copyQuestion], el)));
+  appEl.querySelectorAll('[data-resolve-scope]').forEach(el => el.addEventListener('click', async () => {
+    state.contractFormOpen = true; state.editingQuoteId = contract.id; await renderQuotes();
+    const field = appEl.querySelector(`[data-contract-scope="${el.dataset.resolveScope}"]`);
+    if (field) { field.focus(); field.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }));
+  appEl.querySelectorAll('[data-add-scope-quote]').forEach(el => el.addEventListener('click', () => {
+    const item = CONTRACT_SCOPES.find(x => x.key === el.dataset.addScopeQuote);
+    state.prefillQuoteScope = item ? item.label : null;
+    state.quoteFormOpen = true; state.editingQuoteId = null; renderQuotes();
+  }));
+  appEl.querySelectorAll('[data-select-responsibility]').forEach(el => el.addEventListener('click', async () => {
+    const selectedId = el.dataset.selectResponsibility;
+    const scopeLabel = el.dataset.scopeLabel;
+    const matching = state.quotes.filter(q => q.flags && q.flags._quote_for === scopeLabel);
+    try {
+      await Promise.all(matching.map(q => updateQuote(q.id, { flags: { ...q.flags, _responsibility_selected: q.id === selectedId } })));
+      if (contract && contract.flags && contract.flags._handoff_confirmed) {
+        await updateQuote(contract.id, { flags: { ...contract.flags, _handoff_confirmed: false } });
+      }
+      toast('已揀定負責公司');
+      renderQuotes();
+    } catch (e) { toast('未能更新負責公司：' + e.message, true); }
+  }));
+  const confirmHandoffBtn = document.getElementById('confirmHandoffBtn');
+  if (confirmHandoffBtn) confirmHandoffBtn.addEventListener('click', async () => {
+    const otherQuotes = state.quotes.filter(q => q !== contract);
+    if (handoffStatus(contract, otherQuotes).unresolved.length) { toast('仲有工程未落實負責公司', true); return; }
+    try {
+      await updateQuote(contract.id, { flags: { ...contract.flags, _handoff_confirmed: true } });
+      toast('責任交接已確認 ✓');
+      location.hash = '#/build';
+    } catch (e) { toast('未能確認交接：' + e.message, true); }
+  });
+  appEl.querySelectorAll('[data-open-build]').forEach(el => el.addEventListener('click', () => { location.hash = '#/build'; }));
 
   appEl.querySelectorAll('[data-editquote]').forEach(el => el.addEventListener('click', () => {
-    state.quoteFormOpen = true; state.editingQuoteId = el.dataset.editquote; renderQuotes();
+    state.quoteFormOpen = true; state.editingQuoteId = el.dataset.editquote; state.prefillQuoteScope = null; renderQuotes();
   }));
   appEl.querySelectorAll('[data-delquote]').forEach(el => el.addEventListener('click', async () => {
     if (!confirm('刪除呢間公司報價？')) return;
@@ -1040,7 +1147,7 @@ function attachQuotesEvents(project, contract) {
         await updateQuote(quote.id, { file_path: path });
       }
       toast('已儲存');
-      state.quoteFormOpen = false; state.editingQuoteId = null;
+      state.quoteFormOpen = false; state.editingQuoteId = null; state.prefillQuoteScope = null;
       renderQuotes();
     } catch (e) { toast(e.message, true); saveBtn.disabled = false; saveBtn.textContent = state.editingQuoteId ? '儲存' : '加入比較'; }
   });
@@ -1097,7 +1204,12 @@ async function renderBuild() {
   const project = await resolveProjects();
   if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
 
-  state.stages = await ensureStages(state.user.id, project.id);
+  const [stages, quotes] = await Promise.all([
+    ensureStages(state.user.id, project.id),
+    listQuotes(project.id),
+  ]);
+  state.stages = stages;
+  state.quotes = quotes;
   await Promise.all(state.stages.map(async s => {
     if (!state.photosByStage[s.id]) {
       const rows = await listPhotos(s.id);
@@ -1106,13 +1218,18 @@ async function renderBuild() {
     }
   }));
 
-  const body = state.stages.map((s, i) => stageCardHtml(s, i)).join('');
+  const contract = state.quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
+  const otherQuotes = state.quotes.filter(q => q !== contract);
+  const handoff = handoffStatus(contract, otherQuotes);
+  const responsibilityByStage = Object.fromEntries(handoff.plan.map(item => [item.stageKey, item]));
+  const handoffBanner = contract ? `<div class="buildhandoff ${handoff.confirmed && !handoff.unresolved.length ? 'confirmed' : ''}"><div><div class="eyebrow">開工前責任交接</div><b>${handoff.confirmed && !handoff.unresolved.length ? '七個工序責任已確認' : `${handoff.unresolved.length} 個工序責任未落實`}</b><p>${handoff.confirmed && !handoff.unresolved.length ? '每張工序卡都會顯示負責公司同合約來源。' : '你仍可預覽施工頁；正式開工前請先完成責任交接。'}</p></div><button class="btn sm ${handoff.confirmed ? 'gh' : ''}" data-nav="#/quotes">${handoff.confirmed ? '查看責任清單' : '處理責任 →'}</button></div>` : '<div class="note warn">未加入已簽主合約；施工記錄可以使用，但暫時未有責任來源。</div>';
+  const body = handoffBanner + state.stages.map((s, i) => stageCardHtml(s, i, responsibilityByStage[s.key])).join('');
   appEl.innerHTML = chromeShell('build', body, projectRowHtml());
   attachChromeEvents();
   attachBuildEvents(project);
 }
 
-function stageCardHtml(stage, idx) {
+function stageCardHtml(stage, idx, responsibility) {
   const def = STAGES.find(s => s.k === stage.key);
   const cls = stage.finished_on ? 'done' : (stage.started_on ? 'now' : '');
   const pill = stage.finished_on ? '<span class="pill g">完成 ✓</span>' : (stage.started_on ? '<span class="pill o">進行中</span>' : '<span class="pill mut">未開始</span>');
@@ -1141,6 +1258,7 @@ function stageCardHtml(stage, idx) {
   return `
     <div class="stgcard ${cls}">
       <div class="t"><b>${idx + 1}. ${def.n}</b>${pill}</div>
+      ${responsibility ? `<div class="stageresponsibility ${responsibility.ready ? 'ready' : ''}"><span>負責公司</span><b>${responsibility.company ? esc(responsibility.company) : '未落實'}</b><small>${responsibility.source ? `${responsibility.source} · ${esc(responsibility.label)}` : (responsibility.status === 'check' ? '要先向主承辦商問清楚' : '未揀定額外報價')}</small><a href="#/quotes">查看責任來源 →</a></div>` : ''}
       <div class="grid2 mtop">
         <div><label class="f">開工日期</label><input type="date" data-datefield="${stage.id}:started_on" value="${stage.started_on || ''}"></div>
         <div><label class="f">完成日期</label><input type="date" data-datefield="${stage.id}:finished_on" value="${stage.finished_on || ''}"></div>
