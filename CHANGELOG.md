@@ -2,39 +2,7 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
-## 2026-08-31 — 主合約／額外報價交接成七工序責任清單（本地，未部署）
-
-- 合約七大工程新增「負責公司」交接：主合約已包括項目自動歸主承辦商；漏項有多份額外報價時，由用家揀定最後採用邊間，尚未問清楚／未揀公司會保持未落實。
-- 加入開工前責任清單，逐項顯示工程、負責公司、主合約／額外報價來源，以及對應施工工序；七項全部落實後先可確認交接，但施工頁一直可以預覽。
-- 七個施工工序卡新增負責公司及責任來源，沿用既有開工／完成／驗收日期、checklist、相片及備註；明確將合約 `install` 對應施工 `fit`，避免靠名稱猜測。
-- 沿用 `reno_quotes.flags` 儲存 `_responsibility_selected`／`_handoff_confirmed`，冇 database migration；今次只整合上一階段本地改動並修改 `app.html`、`css/shared.css`、`CHANGELOG.md`，未 push、未部署。
-
-## 2026-08-30 — 合約缺口由提示升級做逐項行動中心
-
-- 已簽合約摘要新增「要另報價／要問清楚／已包括」三個數量，未落實項目分成問清楚及補報價兩段，避免用家睇完漏項仍然唔知下一步。
-- 七大工程各有針對性確認問法，可一鍵複製；「記錄答案」會直接帶返合約範圍欄位更新結果，冇新增 database 欄位。
-- 每個不包括項目可以直接開對應報價表格並預選漏項；畫面顯示已有幾間報價、距離三間比較仲差幾多。Dashboard 同步分開顯示待問及另報價數量。
-- 原有七大工程清單保留喺可展開詳情，主畫面優先顯示行動；沿用現有 `reno_quotes.flags._contract_scope`／`_quote_for`，冇 database migration、冇部署。
-
-## 2026-08-30 — 已簽約用家改行合約漏項流程
-
-- 修正 onboarding 揀「準備開工／已簽約」後仍然要求比較報價嘅 stage mapping bug：Dashboard 下一步改為「加入已簽合約」；揀「施工中」但未補合約亦會提示補記合約，而唔係倒退去比較主報價。
-- 新增已簽合約表格：公司、合約總額、開工／預計完工日、合約檔案；七大工程範圍逐項揀「已包括／不包括要另行報價／唔確定要問清楚」。沿用 `reno_quotes.flags` JSON 儲存 `_kind`、`_contract_scope`、`_contract_end_date`，冇 database migration。
-- 合約摘要會分開列出「要另行報價」同「要問清楚」；有漏項就提供「為漏項加入報價」，額外報價可標明處理邊個漏項，並顯示主合約＋額外報價暫計總額。
-- Dashboard 裝修路線會按 onboarding 階段略過已完成嘅報價階段；合約仍有漏項時，優先提示處理漏項，避免直接當成可以開工。已簽約階段嘅開工倒數亦改為提醒加入合約同確認漏項，唔再叫用家比較主報價。
-
-## 2026-08-30 — 修正 Google 登入錯誤跳去 Travel App
-
-- 根因：MakeMyHome、Travel App 等共用同一個 Supabase project；Auth `Site URL` 係 Travel App，而 redirect allowlist 冇 MakeMyHome，所以 Google OAuth 完成後將 MakeMyHome callback 當成不允許網址，fallback 去 Travel App。
-- 修正：Supabase Authentication → URL Configuration 新增 `https://make-my-home-xi.vercel.app/**`；保留原有 Site URL 同其餘 4 條 redirect URL，冇影響 Travel App／其他 app。
-- 真實 browser 驗證：由 `https://make-my-home-xi.vercel.app/app#/login` 撳「用 Google 帳戶繼續」完成 Google OAuth，callback 返回 MakeMyHome `/app`，route 進入 `#/dashboard`，並顯示新版「30 秒設定」第一步；冇再跳去 Travel App。
-
-## 2026-08-29 — 新版 Dashboard＋首次使用流程
-
-- 新用家第一次登入、未有 project 時，改行 3 步 onboarding：目前裝修階段 → 單位基本資料 → 最想解決嘅事；完成後先建立 project，唔再一入 app 就直接面對普通資料表格。
-- Dashboard 由四張功能狀態卡改成行動主導首頁：顯示「而家最應該做」、按資料計算整體進度、五步裝修路線、由開工日倒數嘅三個期限，同埋時間風險提醒。首次設定揀咗「比較報價／準備開工／施工中」時，下一步亦會優先帶去相應 module。
-- 底部導航統一為「今日／規劃／揀公司／施工」；報價卡原本容易誤解嘅「風險評分」改名做「報價安全度」（高分代表較安全）。
-- 今次只改 `app.html`、`css/shared.css` 同本記錄；冇改 database schema、Supabase migration、RLS、既有 CRUD 或 landing page。
+- 2026-09-06：修正責任交接狀態文案——主合約外工程一旦揀定負責公司，上方改顯示「合約範圍責任已落實」，未落實數量只計真正未有負責公司或仍要問清楚嘅項目；責任清單、Dashboard 同七工序沿用同一套 `responsibilityPlan()` 判斷，冇改 database。
 
 - 2026-08-01（承 07-31 制度複檢）：**`scripts/github_push.py` 修靜默故障** — 舊版 `_PUSH_STATE_DIR` 用 `os.path.dirname(REPO)` 當 stephanie-personal 係隔籬 folder；04-MAINTENANCE §6 將 5 個 repo 搬出 Drive Mirror 後假設崩咗，`makedirs` 靜靜咁喺 `~/Desktop/dev`、`~/dev`、`daily-novel/` 開咗 3 個假 stephanie-personal，concurrent-push 偵測對 6 個 repo 死咗都冇人知（真 state 檔停留喺 7/26–7/30）。改為 `STEPHANIE_PERSONAL_DIR` 環境變數 → Drive 正本絕對路徑 → legacy sibling 三段 resolve，搵唔到就**唔寫兼出聲**（S5「死咗邊個會知」）。12 份 script 一齊改，py_compile 全過，sales-trainer 實跑驗證真 state 有更新。假 folder 已收入 `_to_delete/`。
 
