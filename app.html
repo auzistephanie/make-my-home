@@ -903,6 +903,7 @@ async function renderQuotes() {
   const prefs = loadOnboardingPrefs(state.user.id);
   const contract = state.quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
   const otherQuotes = state.quotes.filter(q => q !== contract);
+  const hasUnassignedExternal = contract && responsibilityPlan(contract, otherQuotes).some(item => item.status === 'external' && !item.ready);
   const wantsContract = ['prepare', 'build'].includes(prefs.stage);
   if (location.hash.includes('mode=contract') && !contract) state.contractFormOpen = true;
 
@@ -925,7 +926,7 @@ async function renderQuotes() {
   } else if (state.quoteFormOpen) {
     body += `<div class="card">${quoteFormHtml(state.quotes.find(q => q.id === state.editingQuoteId), contract ? contractGaps(contract) : [])}</div>`;
   } else if (!wantsContract || contract) {
-    body += `<div class="card"><button class="btn gh" id="addQuoteBtn">＋ ${contract ? '為漏項加入報價' : '加公司'}</button></div>`;
+    body += `<div class="card"><button class="btn gh" id="addQuoteBtn">＋ ${contract ? (hasUnassignedExternal ? '為未落實項目加入報價' : '加入候選報價') : '加公司'}</button></div>`;
   }
 
   appEl.innerHTML = chromeShell('quotes', body, projectRowHtml());
@@ -936,7 +937,14 @@ async function renderQuotes() {
 function contractCardHtml(contract, otherQuotes) {
   const scope = (contract.flags && contract.flags._contract_scope) || {};
   const gaps = contractGaps(contract);
-  const extraTotal = otherQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
+  const responsibility = responsibilityPlan(contract, otherQuotes);
+  const hasUnassignedExternal = responsibility.some(item => item.status === 'external' && !item.ready);
+  const selectedExtraQuotes = responsibility
+    .filter(item => item.status === 'external' && item.selectedQuote)
+    .map(item => item.selectedQuote);
+  const selectedExtraTotal = selectedExtraQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
+  const confirmedTotal = (+contract.total || 0) + selectedExtraTotal;
+  const candidateCount = otherQuotes.length - selectedExtraQuotes.length;
   return `<div class="contractcard">
     <div class="contracthead"><div><div class="eyebrow">已簽主合約</div><h2>${esc(contract.company)}</h2></div><b>${money(contract.total)}</b></div>
     <div class="contractmeta">${contract.flags._contract_end_date ? `預計 ${dispDate(contract.flags._contract_end_date)} 完工 · ` : ''}${contract.file_path ? `<a href="#" data-viewfile="${contract.id}">📎 查看已簽合約</a>` : '未上載合約檔案'}</div>
@@ -946,8 +954,8 @@ function contractCardHtml(contract, otherQuotes) {
       const status = CONTRACT_SCOPE_STATUS[scope[item.key]] || CONTRACT_SCOPE_STATUS.check;
       return `<div><span>${item.label}</span><i class="pill ${status.cls}">${status.label}</i></div>`;
     }).join('')}</div></details>
-    ${extraTotal ? `<div class="combinedtotal">主合約 ${money(contract.total)} ＋ 額外報價暫計 ${money(extraTotal)} ＝ <b>${money((+contract.total || 0) + extraTotal)}</b></div>` : ''}
-    <div class="mtop"><button class="btn sm gh" data-editcontract="${contract.id}">編輯合約</button>${gaps.length ? ' <button class="btn sm" id="addMissingQuoteBtn">為漏項加入報價</button>' : ''}</div>
+    <div class="combinedtotal">目前已確認預算：主合約 ${money(contract.total)}${selectedExtraQuotes.length ? ` ＋ 已選額外工程 ${money(selectedExtraTotal)}` : ''} ＝ <b>${money(confirmedTotal)}</b>${candidateCount ? `<br><small>${candidateCount} 份未獲選候選報價不計入</small>` : ''}</div>
+    <div class="mtop"><button class="btn sm gh" data-editcontract="${contract.id}">編輯合約</button>${hasUnassignedExternal ? ' <button class="btn sm" id="addMissingQuoteBtn">為未落實項目加入報價</button>' : ''}</div>
   </div>`;
 }
 
