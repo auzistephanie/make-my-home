@@ -325,7 +325,7 @@ async function renderDashboard() {
     { label: '預算＋需求規劃', done: !!project.budget_cap && roomsComplete > 0, current: !reachedPrepare && (!project.budget_cap || roomsComplete === 0) },
     { label: '比較裝修報價', done: quoteStepDone, current: !reachedPrepare && !quoteStepDone && !!project.budget_cap && roomsComplete > 0 },
     { label: '簽約＋開工準備', done: contractStepDone, current: quoteStepDone && !contractStepDone },
-    { label: '施工＋分段驗收', done: allDone, current: !allDone && (reachedBuild || !notStarted) },
+    { label: '施工＋分段驗收', done: allDone, current: !allDone && (contractStepDone || reachedBuild || !notStarted) },
   ];
   const completedRouteSteps = routeSteps.filter(s => s.done).length;
   const progress = Math.round(completedRouteSteps / routeSteps.length * 100);
@@ -335,7 +335,9 @@ async function renderDashboard() {
   else if (onboardingPrefs.stage === 'build' && !signedContract) nextAction = { title: '補回已簽合約', desc: '施工中都可以補記合約範圍，方便追蹤漏項同額外工程。', hash: '#/quotes?mode=contract', action: '加入合約 →' };
   else if (contractHandoff.unresolved.length > 0) nextAction = { title: `開工前仲有 ${contractHandoff.unresolved.length} 項責任未落實`, desc: `${contractCheckCount ? `${contractCheckCount} 項要問清楚` : ''}${contractCheckCount && unassignedExternalCount ? '、' : ''}${unassignedExternalCount ? `${unassignedExternalCount} 項未揀負責公司` : ''}。逐項定好由邊間公司負責。`, hash: '#/quotes', action: '處理責任 →' };
   else if (signedContract && !contractHandoff.confirmed) nextAction = { title: '確認開工前責任交接', desc: '七大工程已有負責公司；確認一次，再帶住責任清單進入施工。', hash: '#/quotes', action: '確認交接 →' };
-  else if (onboardingPrefs.stage === 'build' && !allDone) nextAction = { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
+  else if (contractStepDone && !allDone) nextAction = notStarted
+    ? { title: '準備第一個施工工序', desc: '責任交接已完成；確認開工日期，施工期間每完成一段就即場驗收。', hash: '#/build', action: '設定工期 →' }
+    : { title: stageTitle, desc: stageNote || '由而家工序開始，補返日期、驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
   else if (onboardingPrefs.stage === 'quote' && !signedQuote) nextAction = { title: '加入手上嘅裝修報價', desc: '將價錢同紅旗放埋一齊比較，先決定邊間值得再傾。', hash: '#/quotes', action: '加入報價 →' };
   else if (!project.budget_cap) nextAction = { title: '定低裝修預算上限', desc: '設定上限之後，報價比較先可以幫你指出超支風險。', action: '設定預算 →', edit: true };
   else if (!rooms.length) nextAction = { title: '加入第一間房', desc: '先由客飯廳開始，整理用途、傢俬、儲物同電掣。', hash: '#/needs', action: '開始規劃 →' };
