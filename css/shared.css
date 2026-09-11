@@ -150,8 +150,17 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
 .stgcard{border-left:5px solid var(--line);border-radius:10px;background:#FFFDF9;border:1px solid var(--line);padding:12px 14px;margin-bottom:10px}
 .stgcard.done{border-left-color:var(--green)}
 .stgcard.now{border-left-color:var(--accent)}
+.stgcard.focused{box-shadow:0 0 0 2px var(--accent-soft),var(--shadow);scroll-margin-top:12px}
 .stgcard .t{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .stgcard .t b{font-size:.92rem}
+.buildfocus{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;background:var(--green);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.buildfocus h2{font-size:1.05rem;margin:3px 0}
+.buildfocus p{font-size:.78rem;opacity:.82;margin:0;line-height:1.5}
+.buildfocus .eyebrow{color:#F4D899}
+.buildfocus .btn{white-space:nowrap}
+.builddates{display:grid;gap:4px;background:#F8F3EA;border-radius:10px;padding:11px 13px;margin-bottom:10px;font-size:.75rem;color:var(--ink2)}
+.builddates>b{color:var(--ink);margin-bottom:2px}
+.builddates strong{color:var(--green)}
 .stageresponsibility{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;background:var(--danger-soft);border-radius:9px;padding:9px 10px;margin-top:9px}
 .stageresponsibility.ready{background:var(--green-soft)}.stageresponsibility span{font-size:.67rem;color:var(--muted)}.stageresponsibility b{font-size:.78rem}.stageresponsibility small{grid-column:2;font-size:.66rem;color:var(--ink2)}.stageresponsibility a{grid-column:2;font-size:.66rem;color:var(--green);margin-top:3px}
 .dt{font-size:.76rem;color:var(--ink2);margin-top:3px}
@@ -234,6 +243,8 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
   .choicegrid,.dashgrid{grid-template-columns:1fr}
   .nextcard{grid-template-columns:1fr}
   .nextcard .btn{justify-self:start}
+  .buildfocus{grid-template-columns:1fr}
+  .buildfocus .btn{justify-self:start}
   .dashintro{align-items:center}
   .contractscoperow{grid-template-columns:1fr}
 }

@@ -278,12 +278,18 @@ async function renderDashboard() {
   const photoCount = await countPhotosForStages(stages.map(s => s.id));
 
   // 而家階段 card
+  const awaitingInspection = stages.find(s => s.finished_on && !s.inspected_on);
   const inProgress = stages.find(s => s.started_on && !s.finished_on);
-  const allDone = stages.length && stages.every(s => s.finished_on);
+  const nextStage = stages.find(s => !s.started_on);
+  const allDone = stages.length && stages.every(s => s.finished_on && s.inspected_on);
   const notStarted = stages.every(s => !s.started_on);
   let stageTitle, stageNote = '';
   if (allDone) {
-    stageTitle = '🎉 全部工序已完成';
+    stageTitle = '🎉 全部工序已完成及驗收';
+  } else if (awaitingInspection) {
+    const sDef = STAGES.find(s => s.k === awaitingInspection.key);
+    stageTitle = `待驗收 — ${sDef.n}`;
+    stageNote = '先完成驗收記錄，再開始下一個工序。';
   } else if (inProgress) {
     const sDef = STAGES.find(s => s.k === inProgress.key);
     stageTitle = `施工中 — ${sDef.n}`;
@@ -300,8 +306,12 @@ async function renderDashboard() {
     if (tip) stageNote += (stageNote ? '<br>' : '') + tip;
   } else if (notStarted) {
     stageTitle = project.start_date ? `未開工 — 預計 ${dispDate(project.start_date)} 開工` : '未開工';
+  } else if (nextStage) {
+    const sDef = STAGES.find(s => s.k === nextStage.key);
+    stageTitle = `下一步 — 開始${sDef.n}`;
+    stageNote = '上一個工序已驗收，可以記錄今個工序實際開工日期。';
   } else {
-    stageTitle = '施工中';
+    stageTitle = '施工記錄待補充';
   }
 
   const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
@@ -1234,17 +1244,25 @@ async function renderBuild() {
   const otherQuotes = state.quotes.filter(q => q !== contract);
   const handoff = handoffStatus(contract, otherQuotes);
   const responsibilityByStage = Object.fromEntries(handoff.plan.map(item => [item.stageKey, item]));
+  const awaitingInspection = state.stages.find(s => s.finished_on && !s.inspected_on);
+  const inProgress = state.stages.find(s => s.started_on && !s.finished_on);
+  const nextStage = state.stages.find(s => !s.started_on);
+  const focusStage = awaitingInspection || inProgress || nextStage;
+  const focusDef = focusStage && STAGES.find(s => s.k === focusStage.key);
+  const focusAction = awaitingInspection ? '完成驗收' : (inProgress ? '跟進施工及記錄完成日' : '記錄實際開工日');
+  const focusGuide = focusStage ? `<div class="buildfocus"><div><div class="eyebrow">今日先做呢一步</div><h2>${esc(focusDef.n)}</h2><p>${focusAction}。其餘工序資料會繼續保留，之後再處理。</p></div><button class="btn mustard" data-focus-stage="${focusStage.id}">去到呢一步 ↓</button></div>` : '<div class="note good">🎉 七個工序已全部完成及驗收。</div>';
+  const dateGuide = `<div class="builddates"><b>日期點填？</b><span><strong>預計開工日</strong>：${project.start_date ? dispDate(project.start_date) : '未設定'}（整體計劃）</span><span><strong>工序開工日</strong>：實際開始呢個工序</span><span><strong>完成日</strong>：施工完成　·　<strong>驗收日</strong>：檢查合格</span></div>`;
   const handoffBanner = contract ? `<div class="buildhandoff ${handoff.confirmed && !handoff.unresolved.length ? 'confirmed' : ''}"><div><div class="eyebrow">開工前責任交接</div><b>${handoff.confirmed && !handoff.unresolved.length ? '七個工序責任已確認' : `${handoff.unresolved.length} 個工序責任未落實`}</b><p>${handoff.confirmed && !handoff.unresolved.length ? '每張工序卡都會顯示負責公司同合約來源。' : '你仍可預覽施工頁；正式開工前請先完成責任交接。'}</p></div><button class="btn sm ${handoff.confirmed ? 'gh' : ''}" data-nav="#/quotes">${handoff.confirmed ? '查看責任清單' : '處理責任 →'}</button></div>` : '<div class="note warn">未加入已簽主合約；施工記錄可以使用，但暫時未有責任來源。</div>';
-  const body = handoffBanner + state.stages.map((s, i) => stageCardHtml(s, i, responsibilityByStage[s.key])).join('');
+  const body = handoffBanner + focusGuide + dateGuide + state.stages.map((s, i) => stageCardHtml(s, i, responsibilityByStage[s.key], focusStage && s.id === focusStage.id)).join('');
   appEl.innerHTML = chromeShell('build', body, projectRowHtml());
   attachChromeEvents();
   attachBuildEvents(project);
 }
 
-function stageCardHtml(stage, idx, responsibility) {
+function stageCardHtml(stage, idx, responsibility, focused) {
   const def = STAGES.find(s => s.k === stage.key);
-  const cls = stage.finished_on ? 'done' : (stage.started_on ? 'now' : '');
-  const pill = stage.finished_on ? '<span class="pill g">完成 ✓</span>' : (stage.started_on ? '<span class="pill o">進行中</span>' : '<span class="pill mut">未開始</span>');
+  const cls = stage.finished_on && stage.inspected_on ? 'done' : (stage.started_on || focused ? 'now' : '');
+  const pill = stage.finished_on && !stage.inspected_on ? '<span class="pill o">待驗收</span>' : (stage.finished_on ? '<span class="pill g">完成及驗收 ✓</span>' : (stage.started_on ? '<span class="pill o">進行中</span>' : '<span class="pill mut">未開始</span>'));
   const inspectIdx = STAGE_INSPECT_MAP[stage.key];
   const checklist = inspectIdx !== undefined ? INSPECT[inspectIdx] : null;
   let checklistHtml = '';
@@ -1268,7 +1286,7 @@ function stageCardHtml(stage, idx, responsibility) {
     </div>
     <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" style="display:none">`;
   return `
-    <div class="stgcard ${cls}">
+    <div class="stgcard ${cls} ${focused ? 'focused' : ''}" id="stage-${stage.id}">
       <div class="t"><b>${idx + 1}. ${def.n}</b>${pill}</div>
       ${responsibility ? `<div class="stageresponsibility ${responsibility.ready ? 'ready' : ''}"><span>負責公司</span><b>${responsibility.company ? esc(responsibility.company) : '未落實'}</b><small>${responsibility.source ? `${responsibility.source} · ${esc(responsibility.label)}` : (responsibility.status === 'check' ? '要先向主承辦商問清楚' : '未揀定額外報價')}</small><a href="#/quotes">查看責任來源 →</a></div>` : ''}
       <div class="grid2 mtop">
@@ -1284,11 +1302,20 @@ function stageCardHtml(stage, idx, responsibility) {
 }
 
 function attachBuildEvents(project) {
+  appEl.querySelectorAll('[data-focus-stage]').forEach(el => el.addEventListener('click', () => {
+    document.getElementById(`stage-${el.dataset.focusStage}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
   appEl.querySelectorAll('[data-datefield]').forEach(el => el.addEventListener('change', async () => {
     const [stageId, field] = el.dataset.datefield.split(':');
     const stage = state.stages.find(s => s.id === stageId);
     const prev = stage[field];
-    stage[field] = el.value || null;
+    const value = el.value || null;
+    const dates = { started_on: stage.started_on, finished_on: stage.finished_on, inspected_on: stage.inspected_on, [field]: value };
+    if (dates.finished_on && !dates.started_on) { toast('請先填工序開工日期', true); el.value = prev || ''; return; }
+    if (dates.inspected_on && !dates.finished_on) { toast('請先填完成日期', true); el.value = prev || ''; return; }
+    if (dates.started_on && dates.finished_on && dates.finished_on < dates.started_on) { toast('完成日期不可早過開工日期', true); el.value = prev || ''; return; }
+    if (dates.finished_on && dates.inspected_on && dates.inspected_on < dates.finished_on) { toast('驗收日期不可早過完成日期', true); el.value = prev || ''; return; }
+    stage[field] = value;
     // re-render for pill/border update, but keep focus not critical (date input)
     try {
       await updateStage(stageId, { [field]: stage[field] });
