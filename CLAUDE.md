@@ -5,7 +5,7 @@
 
 ## ⚙️ Standards（MANDATORY — 正本：`stephanie-personal/docs/ai-governance/STANDARDS.md`，改規則只改正本）
 
-Push（`github_push.py`，永不 git CLI・HTTPS・一 run 一 commit・**開工前 `--check`**・**收工即推**・三道閘 刪檔／SHA／交叉 review，撞閘唔好即刻 `--force`）・寫入分流（改動記錄 → `CHANGELOG.md` **頂部**；本檔上限 100 行/6KB）・清理 mv `_to_delete/`・方向性決定先 preview（STANDARDS §S3）・改完以用家身份 run 一次先報完成・governance DIAGNOSIS+STANDARDS（完成前過 STANDARDS §S2；冇 mount stephanie-personal 就叫 Stephanie 連埋）。**Codex 讀同層 `AGENTS.md`**。詳文＋例外表 → 正本。
+Push（`github_push.py`，永不 git CLI・HTTPS・一 run 一 commit・**開工前 `--check`**・**收工即推**・三道閘 刪檔／SHA／交叉 review，撞閘唔好即刻 `--force`）・寫入分流（改動記錄 → `CHANGELOG.md` **頂部**；本檔上限 100 行/6KB）・清理 mv `_to_delete/`・方向性決定先 preview（02 §R3）・改完以用家身份 run 一次先報完成・governance 00–06（派工 01 §1＋03 模板；完成前過 02 §R2；冇 mount stephanie-personal 就叫 Stephanie 連埋）。**Codex 讀同層 `AGENTS.md`**。詳文＋例外表 → 正本。
 
 ## 現況（2026-07-30）
 
@@ -37,7 +37,7 @@ Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做
 
 完整清單同理由 → `CLAUDE_BUILD_SPEC.md` §1。
 
-## ✅ 完成前檢查（本 repo 專屬 DoD；通用四格 → STANDARDS.md §S2）
+## ✅ 完成前檢查（本 repo 專屬 DoD；通用四格 → 02-JUDGMENT §R2）
 
 1. 靜態頁有改 → 瀏覽器實開 `index.html` 行受影響 flow（例：計算器輸入 → 結果啱）
 2. 起 phase → 對照 `CLAUDE_BUILD_SPEC.md` §6 該 phase 驗收標準逐條過，全過先落下一個
@@ -49,4 +49,4 @@ Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做
 
 ## Project 存放位置
 
-`~/dev/MakeMyHome/`（2026-08-16 由 Google Drive Mirror 搬返嚟，GitHub 係正本）
+`~/Desktop/Stephanie-Google Drive/dev/MakeMyHome/`（Stephanie 所有新 project 嘅固定存放規則）
