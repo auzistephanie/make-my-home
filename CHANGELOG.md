@@ -2,6 +2,8 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-09-13（三度追加）：修「嚟緊期限」卡淨係按開工日倒數、唔理實際進度嘅問題——已簽約嘅用家仲會見到「收齊最少 3 份報價」「揀定公司及核對合約」嘅提醒，明明兩樣都做咗。`dashboardDeadlines()` 加返 `doneFlags`（roomsDone/quotesDone/contractDone，跟現有 routeSteps 完成判斷一致），已完成嘅階段唔會再顯示提醒；全部提醒都完成咗會顯示「準備階段嘅提醒已經冚晒」，唔會再誤導成「未設開工日期」。冇改 database。已用假資料驗證咗簽約後只剩房間需求提醒、同全部完成後嘅空狀態文案，0 console error。
+
 - 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。
 
 - 2026-09-13（追加）：修「撳加入按揭記錄冇反應」——根因唔喺 app code，係 supabase-js v2 用 Navigator Locks 跨分頁序列化 session refresh；Stephanie 今日開咗好多個分頁（MakeMyHome＋共用同一個 Supabase 專案嘅 Travel App），舊分頁卡住個 lock 冇放，之後任何一個分頁嘅 DB 呼叫都可以永遠 hang 住——冇 network request、冇錯誤、UI 淨係停喺 loading spinner。喺 production 用一個新分頁＋一個舊（污染咗）分頁分別重現咗：新分頁 3 秒內正常收到 RLS 拒絕嘅錯誤 toast，舊分頁 3 秒後仲係完全冇反應。修法：加 `withTimeout()` helper，包住法律財務 module 嘅 create/update/delete 三個 call，15 秒後逾時會彈返一個講明「可能係開得太耐嘅分頁卡住 session，關晒啲分頁再試」嘅錯誤 toast，唔會再永遠卡住冇反應。即時解法：Stephanie 要關晒 make-my-home 同 travel app 嘅所有分頁，開返新嘅先再試。

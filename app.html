@@ -378,7 +378,11 @@ async function renderDashboard() {
   else if (notStarted) nextAction = { title: '準備第一個施工工序', desc: '確認開工日期，施工期間每完成一段就即場驗收。', hash: '#/build', action: '設定工期 →' };
   else nextAction = { title: stageTitle, desc: stageNote || '跟住而家工序完成驗收清單同相片記錄。', hash: '#/build', action: '查看施工 →' };
 
-  const deadlineRows = dashboardDeadlines(project.start_date);
+  const deadlineRows = dashboardDeadlines(project.start_date, {
+    roomsDone: !!project.budget_cap && roomsComplete > 0,
+    quotesDone: quoteStepDone,
+    contractDone: !!signedContract,
+  });
   let timingAlert = '';
   if (project.start_date) {
     const days = Math.ceil((new Date(project.start_date + 'T00:00:00') - new Date()) / 86400000);
@@ -407,7 +411,7 @@ async function renderDashboard() {
       </div>
       <div class="card deadlinecard">
         <div class="rowflex"><h3>嚟緊期限</h3><span class="dt">按開工日倒數</span></div>
-        ${deadlineRows.length ? deadlineRows.map(r => `<div class="deadlinerow"><b>${r.date}</b><span>${r.label}</span></div>`).join('') : '<div class="empty compact">設定開工日期後，呢度會幫你倒數重要期限。</div>'}
+        ${deadlineRows.length ? deadlineRows.map(r => `<div class="deadlinerow"><b>${r.date}</b><span>${r.label}</span></div>`).join('') : `<div class="empty compact">${project.start_date ? '準備階段嘅提醒已經冚晒，專心跟進施工同驗收就得。' : '設定開工日期後，呢度會幫你倒數重要期限。'}</div>`}
       </div>
     </div>
     <div class="card projectsummary">
@@ -424,14 +428,19 @@ async function renderDashboard() {
   if (editBtn) editBtn.addEventListener('click', () => renderNewProjectForm(false, project));
 }
 
-function dashboardDeadlines(startDate) {
+// Only shows reminders for stages the user hasn't actually finished yet —
+// previously this was pure date arithmetic off start_date with no regard for
+// real progress, so a user who'd already signed a contract still saw "收齊
+// 3 份報價" / "揀定公司" nagging them about steps they'd long completed.
+function dashboardDeadlines(startDate, doneFlags) {
   if (!startDate) return [];
+  doneFlags = doneFlags || {};
   const defs = [
-    { days: 90, label: '開始整理房間需求' },
-    { days: 60, label: '收齊最少 3 份報價' },
-    { days: 30, label: '揀定公司及核對合約' },
+    { days: 90, label: '開始整理房間需求', done: doneFlags.roomsDone },
+    { days: 60, label: '收齊最少 3 份報價', done: doneFlags.quotesDone },
+    { days: 30, label: '揀定公司及核對合約', done: doneFlags.contractDone },
   ];
-  return defs.map(d => {
+  return defs.filter(d => !d.done).map(d => {
     const date = new Date(startDate + 'T00:00:00');
     date.setDate(date.getDate() - d.days);
     return { date: dispDate(date.toISOString().slice(0, 10)), label: d.label };
