@@ -19,7 +19,7 @@
 <script>
 /* ============================================================
    裝修無伏 app.html — SPA, hash routing.
-   Routes: #/login #/dashboard #/needs #/quotes #/build
+   Routes: #/login #/dashboard #/needs #/quotes #/build #/legal
    全部寫入 optimistic update + 失敗 toast（見 CLAUDE_BUILD_SPEC.md §5.2）
    ============================================================ */
 
@@ -82,6 +82,10 @@ const state = {
   prefillQuoteScope: null,
   stages: [],
   photosByStage: {}, // stageId -> [{...row, url}]
+  legalRecords: [],
+  legalTab: 'lawyer', // 'lawyer' | 'mortgage'
+  legalFormOpen: false,
+  editingLegalId: null,
   onboardingStep: 0,
   onboarding: {
     stage: 'plan',
@@ -167,6 +171,7 @@ async function route() {
     if (path === '#/needs') return renderNeeds();
     if (path === '#/quotes') return renderQuotes();
     if (path === '#/build') return renderBuild();
+    if (path === '#/legal') return renderLegal();
     location.hash = '#/login';
   } catch (err) {
     console.error('[route] failed:', err);
@@ -191,6 +196,7 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
     { key: 'needs',     hash: '#/needs',     ic: '📋', label: '規劃' },
     { key: 'quotes',    hash: '#/quotes',    ic: '📑', label: '揀公司' },
     { key: 'build',     hash: '#/build',     ic: '🧱', label: '施工' },
+    { key: 'legal',     hash: '#/legal',     ic: '⚖️', label: '法律財務' },
   ];
   return `
     <div class="apphead">
@@ -543,15 +549,47 @@ function renderNewProjectForm(isFirst, editing) {
   const cancelBtn = document.getElementById('npCancel');
   if (cancelBtn) cancelBtn.addEventListener('click', () => { state.forceNewProjectForm = false; renderDashboard(); });
   const delBtn = document.getElementById('npDelete');
-  if (delBtn) delBtn.addEventListener('click', async () => {
-    if (!confirm(`刪除「${editing.name}」？呢個 project 底下所有房間/報價/工序/相片都會一齊刪走，唔可以復原。`)) return;
+  if (delBtn) delBtn.addEventListener('click', () => openDeleteProjectModal(editing));
+}
+
+// Type-the-project-name-to-unlock confirm modal (防手震) — replaces a plain
+// confirm() since deleting a project also cascades rooms/quotes/stages/photos/
+// legal+finance records and can't be undone.
+function openDeleteProjectModal(project) {
+  const bg = document.createElement('div');
+  bg.className = 'modalbg';
+  bg.innerHTML = `
+    <div class="modalcard">
+      <h3>刪除 project</h3>
+      <p>刪除「<b>${esc(project.name)}</b>」會連埋房間、報價、施工記錄、相片同法律財務記錄一齊刪走，<b>唔可以復原</b>。</p>
+      <label class="f">要刪除，請打返個 project 名稱確認：</label>
+      <input type="text" id="delConfirmInput" placeholder="${esc(project.name)}" autocomplete="off">
+      <div class="mtop">
+        <button class="btn danger" id="delConfirmBtn" disabled>確認刪除</button>
+        <button class="btn gh" id="delCancelBtn">取消</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  const input = bg.querySelector('#delConfirmInput');
+  const confirmBtn = bg.querySelector('#delConfirmBtn');
+  input.addEventListener('input', () => { confirmBtn.disabled = input.value !== project.name; });
+  bg.querySelector('#delCancelBtn').addEventListener('click', () => bg.remove());
+  bg.addEventListener('click', (ev) => { if (ev.target === bg) bg.remove(); });
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true; confirmBtn.innerHTML = '<span class="spin"></span>';
     try {
-      await deleteProject(editing.id);
+      await deleteProject(project.id);
+      bg.remove();
       state.currentProjectId = null;
       saveCurrentProjectId(state.user.id, null);
+      state.forceNewProjectForm = false;
       toast('已刪除');
       renderDashboard();
-    } catch (e) { toast(e.message, true); }
+    } catch (e) {
+      toast(e.message, true);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '確認刪除';
+    }
   });
 }
 
@@ -1216,6 +1254,131 @@ async function toggleQuoteSigned(id, signed) {
   renderQuotes();
   try { await updateQuote(id, { status: q.status }); toast(signed ? '已標記簽約' : '已取消簽約'); }
   catch (e) { q.status = prevStatus; toast(e.message, true); renderQuotes(); }
+}
+
+// ================================================================
+// #/legal — 律師／按揭記錄（Task 2）
+// ================================================================
+const LEGAL_STATUS = ['已聯絡', '報價中', '已落實', '完成'];
+const LEGAL_TABS = [
+  { key: 'lawyer', label: '律師' },
+  { key: 'mortgage', label: '按揭' },
+];
+
+async function renderLegal() {
+  if (!(await guard())) return;
+  const project = await resolveProjects();
+  if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
+
+  state.legalRecords = await listLegalFinanceRecords(project.id);
+  const activeTab = state.legalTab || 'lawyer';
+  const records = state.legalRecords.filter(r => r.category === activeTab);
+  const tabLabel = (LEGAL_TABS.find(t => t.key === activeTab) || {}).label || '';
+
+  let body = `<div class="roomtab">${LEGAL_TABS.map(t => `<span class="${activeTab === t.key ? 'on' : ''}" data-legaltab="${t.key}">${t.label}</span>`).join('')}</div>`;
+  body += records.length ? records.map(r => legalCardHtml(r)).join('') : `<div class="empty">未有${esc(tabLabel)}記錄，撳下面新增。</div>`;
+
+  if (state.legalFormOpen) {
+    body += `<div class="card">${legalFormHtml(state.legalRecords.find(r => r.id === state.editingLegalId), activeTab)}</div>`;
+  } else {
+    body += `<div class="card"><button class="btn gh" id="addLegalBtn">＋ 新增${esc(tabLabel)}記錄</button></div>`;
+  }
+
+  appEl.innerHTML = chromeShell('legal', body, projectRowHtml());
+  attachChromeEvents();
+  attachLegalEvents(project, activeTab);
+}
+
+function legalCardHtml(r) {
+  const isMortgage = r.category === 'mortgage';
+  return `<div class="qcard">
+    <div class="hd"><b>${esc(r.contact_name) || '未命名'}</b>${r.quote_amount ? `<span class="price">${money(r.quote_amount)}</span>` : ''}</div>
+    <div class="flagrow"><span class="pill mut">${esc(r.status) || '未設定狀態'}</span></div>
+    ${isMortgage ? `<div class="dt">貸款額 ${r.loan_amount ? money(r.loan_amount) : '—'} · 利率 ${r.interest_rate !== null && r.interest_rate !== undefined ? r.interest_rate + '%' : '—'} · 每月供款 ${r.monthly_payment ? money(r.monthly_payment) : '—'}<br>累計已付利息 ${r.total_interest_paid ? money(r.total_interest_paid) : '—'} · 累計雜費 ${r.total_fee ? money(r.total_fee) : '—'}</div>` : ''}
+    ${r.notes ? `<div class="dt">${esc(r.notes)}</div>` : ''}
+    <div class="mtop">
+      <button class="btn sm gh" data-editlegal="${r.id}">編輯</button>
+      <button class="iconbtn" data-dellegal="${r.id}" style="float:right">🗑️</button>
+    </div>
+  </div>`;
+}
+
+function legalFormHtml(editing, category) {
+  const r = editing || {};
+  const isMortgage = category === 'mortgage';
+  return `
+    <h3>${editing ? '編輯記錄' : `新增${isMortgage ? '按揭' : '律師'}記錄`}</h3>
+    <label class="f">聯絡人／公司名</label>
+    <input type="text" id="l-contact" value="${esc(r.contact_name || '')}" placeholder="${isMortgage ? '例：滙豐銀行' : '例：陳大文律師行'}">
+    <div class="grid2">
+      <div><label class="f">狀態</label><select id="l-status">${LEGAL_STATUS.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+      <div><label class="f">報價（$）</label><input type="number" id="l-quote" value="${r.quote_amount || ''}" min="0"></div>
+    </div>
+    ${isMortgage ? `
+    <div class="grid2">
+      <div><label class="f">貸款額（$）</label><input type="number" id="l-loan" value="${r.loan_amount || ''}" min="0"></div>
+      <div><label class="f">利率（%）</label><input type="number" id="l-rate" value="${r.interest_rate ?? ''}" min="0" step="0.01"></div>
+      <div><label class="f">每月供款（$）</label><input type="number" id="l-monthly" value="${r.monthly_payment || ''}" min="0"></div>
+      <div><label class="f">累計已付利息（$）</label><input type="number" id="l-interestpaid" value="${r.total_interest_paid || ''}" min="0"></div>
+    </div>
+    <label class="f">累計雜費（$）</label>
+    <input type="number" id="l-fee" value="${r.total_fee || ''}" min="0">` : ''}
+    <label class="f">備註</label>
+    <textarea id="l-notes">${esc(r.notes || '')}</textarea>
+    <div class="mtop">
+      <button class="btn" id="l-save">${editing ? '儲存' : '加入'}</button>
+      <button class="btn gh" id="l-cancel" style="margin-left:8px">取消</button>
+    </div>`;
+}
+
+function attachLegalEvents(project, activeTab) {
+  appEl.querySelectorAll('[data-legaltab]').forEach(el => el.addEventListener('click', () => {
+    state.legalTab = el.dataset.legaltab; state.legalFormOpen = false; state.editingLegalId = null; renderLegal();
+  }));
+  const addBtn = document.getElementById('addLegalBtn');
+  if (addBtn) addBtn.addEventListener('click', () => { state.legalFormOpen = true; state.editingLegalId = null; renderLegal(); });
+  const cancelBtn = document.getElementById('l-cancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.legalFormOpen = false; state.editingLegalId = null; renderLegal(); });
+  appEl.querySelectorAll('[data-editlegal]').forEach(el => el.addEventListener('click', () => {
+    state.legalFormOpen = true; state.editingLegalId = el.dataset.editlegal; renderLegal();
+  }));
+  appEl.querySelectorAll('[data-dellegal]').forEach(el => el.addEventListener('click', async () => {
+    if (!confirm('刪除呢條記錄？')) return;
+    const id = el.dataset.dellegal;
+    const backup = state.legalRecords.slice();
+    state.legalRecords = state.legalRecords.filter(r => r.id !== id);
+    renderLegal();
+    try { await deleteLegalFinanceRecord(id); toast('已刪除'); }
+    catch (e) { state.legalRecords = backup; toast(e.message, true); renderLegal(); }
+  }));
+  const saveBtn = document.getElementById('l-save');
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const fields = {
+      category: activeTab,
+      contact_name: document.getElementById('l-contact').value.trim() || null,
+      status: document.getElementById('l-status').value,
+      quote_amount: +document.getElementById('l-quote').value || null,
+      notes: document.getElementById('l-notes').value.trim() || null,
+    };
+    if (activeTab === 'mortgage') {
+      fields.loan_amount = +document.getElementById('l-loan').value || null;
+      fields.interest_rate = document.getElementById('l-rate').value !== '' ? +document.getElementById('l-rate').value : null;
+      fields.monthly_payment = +document.getElementById('l-monthly').value || null;
+      fields.total_interest_paid = +document.getElementById('l-interestpaid').value || null;
+      fields.total_fee = +document.getElementById('l-fee').value || null;
+    }
+    try {
+      saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spin"></span>';
+      if (state.editingLegalId) await updateLegalFinanceRecord(state.editingLegalId, fields);
+      else await createLegalFinanceRecord(state.user.id, project.id, fields);
+      toast('已儲存');
+      state.legalFormOpen = false; state.editingLegalId = null;
+      renderLegal();
+    } catch (e) {
+      toast(e.message, true);
+      saveBtn.disabled = false; saveBtn.textContent = state.editingLegalId ? '儲存' : '加入';
+    }
+  });
 }
 
 // ================================================================

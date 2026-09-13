@@ -2,6 +2,8 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-09-13：Task 1＋2（`claude/review-70pct-2026-09-13.md` 後續）。**刪除 project**：原有「刪除 project」掣改用打返個 project 名先解鎖「確認刪除」嘅 modal（防手震），取代原本嘅瀏覽器 `confirm()`；核實 `reno_rooms`/`reno_quotes`/`reno_stages` 早已對 `reno_projects` 設咗 `on delete cascade`（`reno_photos` 對 `reno_stages` 亦然），刪 project 冇孤兒 row，今次冇改呢部分 schema。**新 module「法律＋財務」**：新 table `reno_legal_finance_records`（`project_id on delete cascade`＋owner-only RLS 四條 policy，已用 Supabase MCP 直接跑落 `cmtubaxlniglklmdwlzs`，見 `supabase/migrations/002_legal_finance.sql`），app.html 加第五個 tab「法律財務」，律師／按揭兩個 sub-tab，卡片式 CRUD 跟現有四大 module 風格；`js/db.js` 加 `listLegalFinanceRecords`/`createLegalFinanceRecord`/`updateLegalFinanceRecord`/`deleteLegalFinanceRecord`。用假 session／假 DB stub 喺 375px 本機驗證咗 tab 排版、新增/編輯表單、刪除 modal 解鎖邏輯，0 console error；真實 Google 登入＋RLS 隔離驗證仍然卡喺 CLAUDE.md 講嘅 OAuth 人手步驟未做。**Task 3a（總支出總覽 schema audit）已完成，貼咗畀 Stephanie 確認**，未經確認前未郁 Task 3b。
+
 - 2026-09-11：改善首次開始施工流程——施工頁優先顯示「今日先做呢一步」及當前工序，說明整體預計開工日與工序實際開工／完成／驗收日期分工；Dashboard 會依次提示施工中、待驗收及下一工序，只有七個工序全部完成及驗收先顯示整體完成。日期輸入加入開工 → 完成 → 驗收次序檢查。保留七工序、責任來源、checklist、相片、備註及原有 database schema。
 
 - 2026-09-09：修正責任交接完成後 Dashboard 下一步倒退問需求或報價嘅問題——一旦七個工序責任已確認，首頁就優先帶用家準備第一個施工工序或繼續當前工序，路線圖同步將「施工＋分段驗收」標示為「而家」；保留原有 60% 完成進度計法，沒有改 database、責任資料或 onboarding 設定。

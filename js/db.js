@@ -1,4 +1,4 @@
-// CRUD helpers for the four app modules. Uses the `reno_` prefixed tables
+// CRUD helpers for the app modules. Uses the `reno_` prefixed tables
 // (this Supabase project is shared with 4 other apps — see CLAUDE_BUILD_SPEC.md
 // note in CLAUDE.md). Requires js/supabase.js loaded first.
 //
@@ -223,4 +223,41 @@ async function countPhotosForStages(stageIds) {
     .in('stage_id', stageIds);
   if (error) dbThrow('countPhotosForStages', error);
   return count || 0;
+}
+
+// ---------------- reno_legal_finance_records ----------------
+async function listLegalFinanceRecords(projectId) {
+  const { data, error } = await supabase
+    .from('reno_legal_finance_records')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) dbThrow('listLegalFinanceRecords', error);
+  return data;
+}
+
+async function createLegalFinanceRecord(userId, projectId, fields) {
+  const { data, error } = await supabase
+    .from('reno_legal_finance_records')
+    .insert({ user_id: userId, project_id: projectId, ...fields })
+    .select()
+    .single();
+  if (error) dbThrow('createLegalFinanceRecord', error);
+  return data;
+}
+
+async function updateLegalFinanceRecord(id, patch) {
+  const { data, error } = await supabase
+    .from('reno_legal_finance_records')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) dbThrow('updateLegalFinanceRecord', error);
+  return data;
+}
+
+async function deleteLegalFinanceRecord(id) {
+  const { error } = await supabase.from('reno_legal_finance_records').delete().eq('id', id);
+  if (error) dbThrow('deleteLegalFinanceRecord', error);
 }
