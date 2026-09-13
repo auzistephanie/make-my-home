@@ -56,10 +56,10 @@ function compressImage(file) {
 async function uploadPhoto(userId, projectId, stageId, file, caption) {
   const blob = await compressImage(file);
   const path = `${userId}/projects/${projectId}/stages/${stageId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const { error } = await supabase.storage.from('reno-photos').upload(path, blob, {
+  const { error } = await withTimeout(supabase.storage.from('reno-photos').upload(path, blob, {
     contentType: 'image/jpeg',
     upsert: false,
-  });
+  }));
   if (error) {
     console.error('[photos] upload failed:', error);
     throw new Error(error.message || '相片上載失敗');
@@ -118,10 +118,10 @@ async function uploadRoomPhoto(userId, roomId, file, caption) {
   const blob = await compressImage(file);
   const ext = 'jpg';
   const path = `${userId}/room-photos/${roomId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from('reno-photos').upload(path, blob, {
+  const { error } = await withTimeout(supabase.storage.from('reno-photos').upload(path, blob, {
     contentType: 'image/jpeg',
     upsert: false,
-  });
+  }));
   if (error) {
     console.error('[photos] room photo upload failed:', error);
     throw new Error(error.message || '相片上載失敗');

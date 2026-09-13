@@ -152,7 +152,7 @@ async function uploadQuoteFile(userId, quoteId, file) {
 }
 
 function quoteFileSignedUrl(path) {
-  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+  return withTimeout(supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60));
 }
 
 // ---------------- reno_stages ----------------
@@ -229,7 +229,7 @@ async function deletePhoto(id, path) {
 
 function photoPublicPath(path) {
   // Bucket is private — build a signed URL for display.
-  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+  return withTimeout(supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60));
 }
 
 // Total photo count across a set of stage ids — used by #/dashboard's 驗收記錄 card
@@ -294,7 +294,7 @@ async function uploadFloorPlanFile(userId, roomId, blob) {
 }
 
 function floorPlanSignedUrl(path) {
-  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+  return withTimeout(supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60));
 }
 
 // ---------------- reno_room_photos (設計參考相, per room) ----------------
@@ -328,5 +328,5 @@ async function deleteRoomPhoto(id, path) {
 }
 
 function roomPhotoSignedUrl(path) {
-  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+  return withTimeout(supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60));
 }

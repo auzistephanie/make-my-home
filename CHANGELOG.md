@@ -6,6 +6,8 @@
 
 - 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。
 
+- 2026-09-14（追加）：修「設計參考相淨係得上載到，之後顯示唔到」——之前擴大 timeout guard 嗰次淨係包咗 db.js 入面用 `.from(table)` 嘅 query，Storage API（`supabase.storage....`）係完全獨立嘅一條 code path，冇被包到：`quoteFileSignedUrl`／`photoPublicPath`／`floorPlanSignedUrl`／`roomPhotoSignedUrl` 四個 signed URL function，同 `photos.js` 入面 `uploadPhoto`／`uploadRoomPhoto` 嘅上載 call，全部都仲係 raw、冇 timeout 保護。上載本身可能好快完成（得一個 request），但顯示相片要幫每張相攞 signed URL——如果嗰陣撞到跨分頁 session lock 卡死，成個 render 就會卡住唔郁，睇落好似「上載到但顯示唔到」。而家全部 storage call 都用 `withTimeout()` 包晒，同 db.js 嘅表格 query 一致待遇。冇改 database；本機驗證咗真實壓縮＋上載＋顯示＋跨畫面持久化，0 console error。
+
 - 2026-09-14：修「平面圖度尺淨係撳到第一個點，第二個點撳唔到」——`<img id="floorPlanImg">` 冇設 `touch-action`，手機瀏覽器好可能將快速兩下 tap 當成「double-tap 縮放」手勢，吞咗第二下嘅 click event（呢個係好經典嘅 mobile web quirk）。之前用合成 `MouseEvent('click', ...)` 做嘅本機測試完全影唔到呢類真實觸控手勢問題，所以之前驗證漏咗。加咗 `touch-action:manipulation`（停用 double-tap 縮放同 300ms tap 延遲，但保留正常滑動）＋`-webkit-user-select:none`／`-webkit-touch-callout:none`（防止長按彈出 iOS「儲存圖片」選單打斷度尺）。冇改 database、冇改度尺邏輯。
 
 - 2026-09-13（七度追加）：新功能「設計＋平面圖」（每間房獨立）。Stephanie 要求「先睇 preview 先起」，用 Claude Design 砌咗兩個方案畀佢揀（方案 A：相片＋手動尺寸表；方案 B：相片上面直接度尺，撳兩下畫線、第一條線校準比例尺、之後嘅線自動計），揀咗方案 B，仲要求平面圖同設計參考相都要分開每間房自己一份（唔係成層樓一個 pool）。
