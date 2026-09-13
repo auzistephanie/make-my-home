@@ -771,6 +771,24 @@ function renderNeedsWizard(project) {
   `;
 }
 
+// 燈掣一直有喺 wizard 第 4 步問（單控/雙控、調光、特別燈光需求），但掣位
+// 清單之前淨係讀 answers.sockets，燈掣資料完全冇顯示——即係俾電工睇嗰張
+// 清單漏晒燈掣位置。呢個 helper 將 answers.lighting 轉做同插座一樣嘅
+// {label, qty, note} 列，畀 renderNeedsSummary／generateSocketListText 共用。
+function lightingSwitchRows(lighting) {
+  if (!lighting) return [];
+  const rows = [];
+  const isDouble = lighting.main_switch === 'double';
+  rows.push({
+    label: `主燈開關（${isDouble ? '雙控' : '單控'}）`,
+    qty: isDouble ? 2 : 1,
+    note: `牆身離地約 120–130cm，${isDouble ? '房門口＋床頭／梳化位各一個' : '房門口一個'}`,
+  });
+  if (lighting.dimmer) rows.push({ label: '調光／情景燈掣', qty: 1, note: '牆身離地約 120–130cm，主開關旁' });
+  if (lighting.notes) rows.push({ label: '特別燈光位', qty: '—', note: lighting.notes });
+  return rows;
+}
+
 function renderNeedsSummary(project) {
   const brief = generateBrief(project, state.rooms);
   const socketRows = [];
@@ -781,6 +799,9 @@ function renderNeedsSummary(project) {
       if (qty > 0) socketRows.push(`<tr><td>${esc(r.name)}</td><td>${t.label}</td><td>${qty}</td><td>${t.height}</td></tr>`);
     });
     if (s.extra) socketRows.push(`<tr><td>${esc(r.name)}</td><td>其他電器</td><td>—</td><td>${esc(s.extra)}</td></tr>`);
+    lightingSwitchRows(r.answers && r.answers.lighting).forEach(row => {
+      socketRows.push(`<tr><td>${esc(r.name)}</td><td>${esc(row.label)}</td><td>${esc(String(row.qty))}</td><td>${esc(row.note)}</td></tr>`);
+    });
   });
   return `
     <div class="rowflex" style="margin-bottom:8px">
@@ -793,7 +814,7 @@ function renderNeedsSummary(project) {
       <div class="copybox" id="briefBox">${esc(brief)}</div>
     </div>
     <div class="card">
-      <div class="rowflex"><h3 style="margin:0">🔌 全屋掣位清單</h3>
+      <div class="rowflex"><h3 style="margin:0">🔌 全屋掣位＋燈掣清單</h3>
         <div><button class="btn sm" data-copy="socket">複製</button> <button class="btn gh sm" data-dl="socket">下載 .txt</button></div>
       </div>
       <div class="tbwrap">
@@ -895,17 +916,11 @@ function attachNeedsEvents(project) {
       await updateRoom(room.id, { answers });
       if (dir === 'save') {
         // Finishing the last step used to just re-render the same step 4 —
-        // nothing left to do there, so jump to the next room that still
-        // needs planning, or back to the dashboard if this was the last one.
+        // nothing left to do there. Straight to 需求書＋掣位清單 makes more
+        // sense: that's the actual deliverable this whole wizard builds towards.
         toast(`「${room.name}」已經規劃完成 ✓`);
-        const nextIncomplete = state.rooms.find(r => r.id !== room.id && !roomIsComplete(r));
-        if (nextIncomplete) {
-          state.activeRoomId = nextIncomplete.id;
-          state.needsStep = 0;
-          renderNeeds();
-        } else {
-          location.hash = '#/dashboard';
-        }
+        state.needsView = 'summary';
+        renderNeeds();
         return;
       }
       state.needsStep = savedStep + (+dir);
@@ -959,12 +974,13 @@ function lightingText(lighting) {
   return out;
 }
 function generateSocketListText(rooms) {
-  let out = '【全屋掣位清單】\n';
+  let out = '【全屋掣位＋燈掣清單】\n';
   rooms.forEach(r => {
     const s = (r.answers && r.answers.sockets) || {};
     const lines = [];
     socketTypesForRoom(r.name).forEach(t => { const qty = s[t.key] || 0; if (qty > 0) lines.push(`　${t.label} × ${qty}　建議高度：${t.height}`); });
     if (s.extra) lines.push(`　其他：${s.extra}`);
+    lightingSwitchRows(r.answers && r.answers.lighting).forEach(row => lines.push(`　${row.label} × ${row.qty}　${row.note}`));
     if (lines.length) out += `\n${r.name}\n${lines.join('\n')}\n`;
   });
   return out;
