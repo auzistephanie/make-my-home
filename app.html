@@ -892,7 +892,7 @@ async function renderRoomDesign(project) {
       <span style="font-size:1.4rem">＋</span>上載平面圖
     </div>` : `
     <div style="position:relative;width:100%;line-height:0">
-      <img src="${floorPlanUrl}" id="floorPlanImg" style="width:100%;display:block;border-radius:9px;cursor:crosshair">
+      <img src="${floorPlanUrl}" id="floorPlanImg" style="width:100%;display:block;border-radius:9px;cursor:crosshair;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none" draggable="false">
       <svg viewBox="0 0 ${room.floor_plan_width} ${room.floor_plan_height}" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
         ${measurements.map(m => measurementSvg(m, room.floor_plan_width, room.floor_plan_height)).join('')}
         ${state.floorPlanPendingPoint ? `<circle cx="${state.floorPlanPendingPoint.x * room.floor_plan_width}" cy="${state.floorPlanPendingPoint.y * room.floor_plan_height}" r="${Math.max(room.floor_plan_width, room.floor_plan_height) * 0.012}" fill="#C4622D"></circle>` : ''}

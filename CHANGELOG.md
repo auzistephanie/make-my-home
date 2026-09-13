@@ -6,6 +6,8 @@
 
 - 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。
 
+- 2026-09-14：修「平面圖度尺淨係撳到第一個點，第二個點撳唔到」——`<img id="floorPlanImg">` 冇設 `touch-action`，手機瀏覽器好可能將快速兩下 tap 當成「double-tap 縮放」手勢，吞咗第二下嘅 click event（呢個係好經典嘅 mobile web quirk）。之前用合成 `MouseEvent('click', ...)` 做嘅本機測試完全影唔到呢類真實觸控手勢問題，所以之前驗證漏咗。加咗 `touch-action:manipulation`（停用 double-tap 縮放同 300ms tap 延遲，但保留正常滑動）＋`-webkit-user-select:none`／`-webkit-touch-callout:none`（防止長按彈出 iOS「儲存圖片」選單打斷度尺）。冇改 database、冇改度尺邏輯。
+
 - 2026-09-13（七度追加）：新功能「設計＋平面圖」（每間房獨立）。Stephanie 要求「先睇 preview 先起」，用 Claude Design 砌咗兩個方案畀佢揀（方案 A：相片＋手動尺寸表；方案 B：相片上面直接度尺，撳兩下畫線、第一條線校準比例尺、之後嘅線自動計），揀咗方案 B，仲要求平面圖同設計參考相都要分開每間房自己一份（唔係成層樓一個 pool）。
 
   Schema：`reno_rooms` 加 `floor_plan_path`／`floor_plan_scale`／`floor_plan_measurements`（jsonb 度尺線陣列）／`floor_plan_width`／`floor_plan_height`；新表 `reno_room_photos`（純相片 gallery，唔涉及度尺，RLS 同 `reno_legal_finance_records` 一樣 owner-only）。
