@@ -116,12 +116,37 @@ const BREAKDOWN_CATS = [
 
 // ---------- 需求規劃：電掣插座類型（掣位清單建議高度，新增內容 — index.html 冇呢部份，
 // 因為要生成掣位清單表就需要呢個對照表；spec 冇寫死數值，用裝修界普遍建議高度）----------
+// 呢個做返臥室／書房用嘅預設清單（原本全屋房間都共用呢一份，例如廚房都會問
+// 「床頭插座」，冇意思）。房間類型專屬清單見 ROOM_SOCKET_TYPES；自訂/未知
+// 房名先 fallback 用呢份。
 const SOCKET_TYPES = [
   { key: 'bedside', label: '床頭插座',        height: '座檯面上約 20cm（離地約 90cm）', hint: '每邊最少 1 個＋USB 位' },
   { key: 'tv',       label: '電視／娛樂區插座', height: '電視背板約 120cm，或地台上 30cm（藏喉款）', hint: '電視＋機頂盒＋遊戲機＋router' },
   { key: 'ac',        label: '冷氣獨立迴路',    height: '按冷氣機出線口位置（獨立迴路，唔同插座共用）', hint: '2.5mm² 以上獨立迴路' },
   { key: 'lan',       label: '網絡 LAN／Wi-Fi 位', height: '書枱面上約 30cm，或牆身離地 30cm', hint: '在家工作建議書枱位有 LAN' },
 ];
+const ROOM_SOCKET_TYPES = {
+  '客飯廳': [
+    { key: 'tv',      label: '電視／娛樂區插座', height: '電視背板約 120cm，或地台上 30cm（藏喉款）', hint: '電視＋機頂盒＋遊戲機＋router' },
+    { key: 'ac',       label: '冷氣獨立迴路',    height: '按冷氣機出線口位置（獨立迴路，唔同插座共用）', hint: '2.5mm² 以上獨立迴路' },
+    { key: 'lan',      label: '網絡 LAN／Wi-Fi 位', height: '書枱面上約 30cm，或牆身離地 30cm', hint: '在家工作建議書枱位有 LAN' },
+    { key: 'general',  label: '一般家電插座',    height: '離地約 30cm', hint: '吸塵機、風扇、充電器等，建議多預幾個' },
+  ],
+  '廚房': [
+    { key: 'fridge',  label: '雪櫃插座',        height: '離地約 30cm', hint: '建議獨立插座，唔好同其他大型家電共用' },
+    { key: 'cook',    label: '煮食爐具／抽油煙機', height: '按爐具位置；抽油煙機約 200cm', hint: '電磁爐／抽油煙機通常要獨立迴路' },
+    { key: 'counter', label: '檯面插座（小家電）', height: '檯面上約 15–20cm，防潑水掣面板', hint: '搞拌機、多士爐、電飯煲等，建議最少 2–3 個' },
+    { key: 'laundry', label: '洗衣機／洗碗機插座', height: '離地約 60cm，防潑水', hint: '獨立迴路，注意去水位' },
+  ],
+  '浴室': [
+    { key: 'dryer',   label: '風筒／暖風機插座', height: '離地約 110cm，遠離花灑位置', hint: '防潑水掣面板，獨立迴路' },
+    { key: 'washer',  label: '洗衣機插座',      height: '離地約 60cm，防潑水', hint: '如浴室兼作工人房／儲物' },
+    { key: 'heater',  label: '熱水爐掣／恆溫爐', height: '按熱水爐位置', hint: '獨立迴路，留意防水規格' },
+  ],
+};
+function socketTypesForRoom(roomName) {
+  return ROOM_SOCKET_TYPES[roomName] || SOCKET_TYPES;
+}
 
 // ---------- 需求規劃 wizard 步驟定義（4 步，對應 reno_rooms.answers 結構）----------
 const ROOM_WIZARD_STEPS = ['usage', 'storage', 'sockets', 'lighting'];

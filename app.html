@@ -43,6 +43,9 @@ function dispDate(iso) {
 }
 function flatTypeLabel(v) { return (FLAT_TYPES.find(t => t.value === v) || {}).label || v || '未設定'; }
 function scopeLabel(v) { return (SCOPES.find(t => t.value === v) || {}).label || v || '未設定'; }
+function roomIsComplete(r) {
+  return !!(r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined);
+}
 let toastTimer = null;
 function toast(msg, isErr) {
   toastEl.textContent = msg;
@@ -323,7 +326,7 @@ async function renderDashboard() {
     stageTitle = '施工記錄待補充';
   }
 
-  const roomsComplete = rooms.filter(r => r.answers && r.answers.usage !== undefined && r.answers.storage !== undefined && r.answers.sockets !== undefined && r.answers.lighting !== undefined).length;
+  const roomsComplete = rooms.filter(roomIsComplete).length;
   const signedQuote = quotes.find(q => q.status === 'signed');
   const signedContract = quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
   const contractGapsNow = signedContract ? contractGaps(signedContract) : [];
@@ -610,6 +613,26 @@ function openDeleteProjectModal(project) {
 // ================================================================
 const QUICK_ROOMS = ['客飯廳', '主人房', '細房', '廚房', '浴室'];
 
+// Once a room is one of the known QUICK_ROOMS presets, step 1 shouldn't ask
+// the user to type its purpose from scratch — pre-fill a sensible usage
+// default, and offer common furniture as clickable suggestions (same idea as
+// STORAGE_TYPE_OPTIONS in step 2) instead of a blank free-text-only field.
+// Custom/unrecognised room names get neither — we don't know what they're for.
+const ROOM_USAGE_SUGGESTIONS = {
+  '客飯廳': '客廳＋飯廳',
+  '主人房': '睡眠＋更衣',
+  '細房':   '睡眠＋儲物／工作',
+  '廚房':   '煮食＋洗碗',
+  '浴室':   '如廁＋沖涼',
+};
+const ROOM_FURNITURE_SUGGESTIONS = {
+  '客飯廳': ['梳化', '電視櫃', '飯桌', '餐椅', '茶几', '鞋櫃'],
+  '主人房': ['床架', '床褥', '衣櫃', '梳妝台', '床頭櫃'],
+  '細房':   ['床架', '衣櫃', '書枱', '層架'],
+  '廚房':   ['雪櫃', '煮食爐', '抽油煙機', '洗衣機', '微波爐', '碗櫃'],
+  '浴室':   ['座廁', '洗手盆', '鏡櫃', '花灑', '浴缸'],
+};
+
 // Shared "pick a common room or type your own" picker — used both for the
 // very first room (empty state) and for adding a 2nd+ room. Previously the
 // suggestion chips only existed in the empty state; adding another room fell
@@ -677,12 +700,17 @@ function renderNeedsWizard(project) {
 
   let stepBody = '';
   if (step === 0) {
+    const usageSuggestion = ROOM_USAGE_SUGGESTIONS[room.name];
+    const furnitureSuggestions = ROOM_FURNITURE_SUGGESTIONS[room.name] || [];
+    const currentFurniture = (a.furniture || '').split(/[,，、]/).map(s => s.trim()).filter(Boolean);
     stepBody = `
       <h3>${esc(room.name)} · 第 1 步：用途＋大嚿傢俬 🛋️</h3>
       <label class="f">呢間房主要用途</label>
-      <input type="text" id="f-usage" placeholder="例：睡眠＋工作枱" value="${esc(a.usage || '')}">
+      <input type="text" id="f-usage" placeholder="例：睡眠＋工作枱" value="${esc(a.usage || usageSuggestion || '')}">
+      ${usageSuggestion && !a.usage ? `<p class="dt">已經幫你填低「${esc(room.name)}」常見用途，唔啱可以自己改。</p>` : ''}
       <label class="f">已有／要留返嘅大型傢俬</label>
-      <input type="text" id="f-furniture" placeholder="例：衣櫃、床架、書枱" value="${esc(a.furniture || '')}">`;
+      <input type="text" id="f-furniture" placeholder="例：衣櫃、床架、書枱" value="${esc(a.furniture || '')}">
+      ${furnitureSuggestions.length ? `<div class="chiprow">${furnitureSuggestions.map(f => `<label style="cursor:pointer"><span data-furnituretag="${esc(f)}" class="${currentFurniture.includes(f) ? 'on' : ''}">${currentFurniture.includes(f) ? '✓' : '＋'} ${esc(f)}</span></label>`).join('')}</div>` : ''}`;
   } else if (step === 1) {
     const storage = a.storage || {};
     const level = storage.level || 'med';
@@ -700,9 +728,10 @@ function renderNeedsWizard(project) {
       <input type="text" id="f-storagenote" placeholder="例：要放吸塵機同熨衫板" value="${esc(storage.note || '')}">`;
   } else if (step === 2) {
     const sockets = a.sockets || {};
+    const socketTypes = socketTypesForRoom(room.name);
     stepBody = `
       <h3>${esc(room.name)} · 第 3 步：電掣＋插座＋網絡位 🔌</h3>
-      ${SOCKET_TYPES.map(t => `
+      ${socketTypes.map(t => `
         <label class="f">${t.label}</label>
         <div class="counter">
           <button data-ctr="${t.key}" data-delta="-1">−</button>
@@ -747,7 +776,7 @@ function renderNeedsSummary(project) {
   const socketRows = [];
   state.rooms.forEach(r => {
     const s = (r.answers && r.answers.sockets) || {};
-    SOCKET_TYPES.forEach(t => {
+    socketTypesForRoom(r.name).forEach(t => {
       const qty = s[t.key] || 0;
       if (qty > 0) socketRows.push(`<tr><td>${esc(r.name)}</td><td>${t.label}</td><td>${qty}</td><td>${t.height}</td></tr>`);
     });
@@ -815,6 +844,20 @@ function attachNeedsEvents(project) {
     b.textContent = next;
   }));
 
+  // furniture suggestion chips (step 1) — toggle a suggested item in/out of
+  // the free-text furniture field rather than requiring it to be typed out.
+  appEl.querySelectorAll('[data-furnituretag]').forEach(el => el.addEventListener('click', () => {
+    const tag = el.dataset.furnituretag;
+    const input = document.getElementById('f-furniture');
+    const current = input.value.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+    const idx = current.indexOf(tag);
+    if (idx >= 0) current.splice(idx, 1); else current.push(tag);
+    input.value = current.join('、');
+    const nowOn = current.includes(tag);
+    el.classList.toggle('on', nowOn);
+    el.textContent = (nowOn ? '✓ ' : '＋ ') + tag;
+  }));
+
   const stepBtn = appEl.querySelector('[data-stepnext]');
   if (stepBtn) stepBtn.addEventListener('click', async () => {
     const dir = stepBtn.dataset.stepnext;
@@ -835,7 +878,7 @@ function attachNeedsEvents(project) {
         };
       } else if (step === 2) {
         const sockets = {};
-        SOCKET_TYPES.forEach(t => { sockets[t.key] = +document.getElementById('ctr-' + t.key).textContent || 0; });
+        socketTypesForRoom(room.name).forEach(t => { sockets[t.key] = +document.getElementById('ctr-' + t.key).textContent || 0; });
         sockets.extra = document.getElementById('f-extra').value.trim();
         answers.sockets = sockets;
       } else {
@@ -850,8 +893,22 @@ function attachNeedsEvents(project) {
       const savedStep = step;
       stepBtn.disabled = true; stepBtn.innerHTML = '<span class="spin"></span>';
       await updateRoom(room.id, { answers });
-      if (dir === 'save') { toast('已儲存 ✓'); }
-      else { state.needsStep = savedStep + (+dir); }
+      if (dir === 'save') {
+        // Finishing the last step used to just re-render the same step 4 —
+        // nothing left to do there, so jump to the next room that still
+        // needs planning, or back to the dashboard if this was the last one.
+        toast(`「${room.name}」已經規劃完成 ✓`);
+        const nextIncomplete = state.rooms.find(r => r.id !== room.id && !roomIsComplete(r));
+        if (nextIncomplete) {
+          state.activeRoomId = nextIncomplete.id;
+          state.needsStep = 0;
+          renderNeeds();
+        } else {
+          location.hash = '#/dashboard';
+        }
+        return;
+      }
+      state.needsStep = savedStep + (+dir);
       renderNeeds();
     } catch (e) {
       toast(e.message, true);
@@ -906,7 +963,7 @@ function generateSocketListText(rooms) {
   rooms.forEach(r => {
     const s = (r.answers && r.answers.sockets) || {};
     const lines = [];
-    SOCKET_TYPES.forEach(t => { const qty = s[t.key] || 0; if (qty > 0) lines.push(`　${t.label} × ${qty}　建議高度：${t.height}`); });
+    socketTypesForRoom(r.name).forEach(t => { const qty = s[t.key] || 0; if (qty > 0) lines.push(`　${t.label} × ${qty}　建議高度：${t.height}`); });
     if (s.extra) lines.push(`　其他：${s.extra}`);
     if (lines.length) out += `\n${r.name}\n${lines.join('\n')}\n`;
   });

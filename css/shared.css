@@ -79,6 +79,7 @@ label.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:
 .chiprow{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
 .chiprow label{display:flex;align-items:center;gap:4px;background:#F1EADB;border-radius:999px;padding:5px 12px;font-size:.78rem;color:var(--ink2);cursor:pointer}
 .chiprow input{width:auto}
+.chiprow span.on{color:var(--green);font-weight:700}
 
 /* ---------- tables ---------- */
 .tbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
