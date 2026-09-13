@@ -79,6 +79,9 @@ const state = {
   needsStep: 0,
   needsView: 'wizard', // 'wizard' | 'summary'
   addRoomFormOpen: false,
+  roomPhotos: [], // current room's design-reference gallery (state.needsView === 'design')
+  floorPlanPendingPoint: null, // {x,y} normalized — first tap of a not-yet-finished measurement line
+  pendingCalibrationLine: null, // {x1,y1,x2,y2} normalized — line awaiting a real-world length input
   quotes: [],
   quoteFormOpen: false,
   contractFormOpen: false,
@@ -666,6 +669,8 @@ async function renderNeeds() {
       </div>`;
   } else if (state.needsView === 'summary') {
     bodyHtml = renderNeedsSummary(project);
+  } else if (state.needsView === 'design') {
+    bodyHtml = await renderRoomDesign(project);
   } else {
     bodyHtml = renderNeedsWizard(project);
   }
@@ -675,9 +680,10 @@ async function renderNeeds() {
   attachNeedsEvents(project);
 }
 
-function renderNeedsWizard(project) {
-  const room = state.rooms.find(r => r.id === state.activeRoomId);
-  const roomTabsHtml = `
+// Shared room-tab row — used by both the wizard and the design/floor-plan
+// view so switching rooms works identically in either.
+function roomTabsBarHtml() {
+  return `
     <div class="rowflex">
       <div class="roomtab" style="flex:1">
         ${state.rooms.map(r => `<span class="${r.id === state.activeRoomId ? 'on' : ''}" data-room="${r.id}">${esc(r.name)}</span>`).join('')}
@@ -688,8 +694,13 @@ function renderNeedsWizard(project) {
       <div class="rowflex"><h3 style="margin:0">加新房間</h3><button class="iconbtn" id="cancelAddRoom">✕</button></div>
       ${roomPickerHtml(state.rooms.map(r => r.name))}
     </div>` : ''}`;
+}
+
+function renderNeedsWizard(project) {
+  const room = state.rooms.find(r => r.id === state.activeRoomId);
+  const roomTabsHtml = roomTabsBarHtml();
   const topBar = `<div class="rowflex" style="margin-bottom:8px">
-      <div></div>
+      <button class="btn gh sm" data-view="design">📐 設計＋平面圖</button>
       <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
     </div>`;
   if (!room) return topBar + roomTabsHtml;
@@ -806,6 +817,7 @@ function renderNeedsSummary(project) {
   return `
     <div class="rowflex" style="margin-bottom:8px">
       <button class="btn gh sm" data-view="wizard">← 返回房間問卷</button>
+      <button class="btn gh sm" data-view="design">📐 設計＋平面圖</button>
     </div>
     <div class="card">
       <div class="rowflex"><h3 style="margin:0">📄 需求書</h3>
@@ -825,6 +837,114 @@ function renderNeedsSummary(project) {
     </div>
     <button class="btn gh" onclick="window.print()">🖨️ Print</button>
   `;
+}
+
+// ================================================================
+// #/needs — 設計＋平面圖（每間房獨立：一張可以度尺嘅平面圖 + 一個純
+// 相片嘅設計參考 gallery）。度尺做法：起止點存做 0-1 normalized 座標
+// （相對 floor_plan_width/height，唔受畫面顯示大小影響）；第一條線要求
+// 用家輸入實際長度做校準，之後嘅線就用返個 scale（米/像素）自動計。
+// ================================================================
+function pixelDistance(line, w, h) {
+  const dx = (line.x2 - line.x1) * w;
+  const dy = (line.y2 - line.y1) * h;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function measurementSvg(m, w, h) {
+  const x1 = m.x1 * w, y1 = m.y1 * h, x2 = m.x2 * w, y2 = m.y2 * h;
+  const color = m.isCalibration ? '#C4622D' : '#3E5C50';
+  const r = Math.max(w, h) * 0.012;
+  const strokeW = Math.max(w, h) * 0.004;
+  const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+  return `
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeW}" stroke-dasharray="${strokeW * 3} ${strokeW * 2}"></line>
+    <circle cx="${x1}" cy="${y1}" r="${r}" fill="${color}"></circle>
+    <circle cx="${x2}" cy="${y2}" r="${r}" fill="${color}"></circle>
+    <rect x="${midX - r * 3.4}" y="${midY - r * 1.1}" width="${r * 6.8}" height="${r * 2.2}" rx="${r * 1.1}" fill="${color}"></rect>
+    <text x="${midX}" y="${midY + r * 0.4}" text-anchor="middle" font-size="${r * 1.4}" fill="#fff" font-weight="700">${m.meters}m</text>`;
+}
+
+async function renderRoomDesign(project) {
+  const room = state.rooms.find(r => r.id === state.activeRoomId);
+  const roomTabsHtml = roomTabsBarHtml();
+  const topBar = `<div class="rowflex" style="margin-bottom:8px">
+      <button class="btn gh sm" data-view="wizard">← 返回房間問卷</button>
+      <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
+    </div>`;
+  if (!room) return topBar + roomTabsHtml;
+
+  const [roomPhotos] = await Promise.all([listRoomPhotos(room.id)]);
+  await Promise.all(roomPhotos.map(async p => { const { data } = await roomPhotoSignedUrl(p.path); p.url = data ? data.signedUrl : ''; }));
+  state.roomPhotos = roomPhotos;
+
+  const measurements = room.floor_plan_measurements || [];
+  const hasFloorPlan = !!room.floor_plan_path;
+  const hasScale = room.floor_plan_scale !== null && room.floor_plan_scale !== undefined;
+  let floorPlanUrl = '';
+  if (hasFloorPlan) {
+    const { data } = await floorPlanSignedUrl(room.floor_plan_path);
+    floorPlanUrl = data ? data.signedUrl : '';
+  }
+
+  const floorPlanBody = !hasFloorPlan ? `
+    <div class="ph add" style="width:100%;height:140px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:.85rem" data-uploadfloorplan>
+      <span style="font-size:1.4rem">＋</span>上載平面圖
+    </div>` : `
+    <div style="position:relative;width:100%;line-height:0">
+      <img src="${floorPlanUrl}" id="floorPlanImg" style="width:100%;display:block;border-radius:9px;cursor:crosshair">
+      <svg viewBox="0 0 ${room.floor_plan_width} ${room.floor_plan_height}" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+        ${measurements.map(m => measurementSvg(m, room.floor_plan_width, room.floor_plan_height)).join('')}
+        ${state.floorPlanPendingPoint ? `<circle cx="${state.floorPlanPendingPoint.x * room.floor_plan_width}" cy="${state.floorPlanPendingPoint.y * room.floor_plan_height}" r="${Math.max(room.floor_plan_width, room.floor_plan_height) * 0.012}" fill="#C4622D"></circle>` : ''}
+      </svg>
+    </div>
+    <div class="mtop">
+      ${!hasScale ? '<span class="dt">撳相入面兩個點畫一條你知道長度嘅線（例如一幅牆），畫完會問你實際長度嚟校準比例尺。</span>' : (state.floorPlanPendingPoint ? '<span class="dt">再撳一下完成呢條度尺線。</span>' : '<span class="dt">撳相度兩個點就可以再加一條度尺線。</span>')}
+      <div class="mtop">
+        <button class="btn sm gh" data-replacefloorplan>換一張平面圖</button>
+        ${hasScale ? '<button class="btn sm gh" data-resetscale style="margin-left:6px">重設比例尺</button>' : ''}
+      </div>
+    </div>
+    ${state.pendingCalibrationLine ? `
+    <div class="card" style="margin-top:10px">
+      <div style="font-size:.98rem;font-weight:700;margin-bottom:6px">校準比例尺</div>
+      <p class="dt">你啱啱畫嗰條線，實際長度係幾多米？之後畫嘅線就會自動計出尺寸。</p>
+      <label class="f">實際長度（米）</label>
+      <input type="number" id="calibrationMeters" min="0" step="0.01" placeholder="例：3.2">
+      <div class="mtop">
+        <button class="btn sm" id="confirmCalibration">確認校準</button>
+        <button class="btn sm gh" id="cancelCalibration" style="margin-left:6px">取消</button>
+      </div>
+    </div>` : ''}
+    ${measurements.length ? `
+    <div class="card" style="margin-top:10px">
+      <div style="font-size:.98rem;font-weight:700;margin-bottom:6px">已度尺寸</div>
+      ${measurements.map((m, i) => `<div class="rowflex" style="padding:6px 0;border-bottom:1px dashed var(--line)">
+        <span style="font-size:.85rem">${m.isCalibration ? '📏 校準線' : `度尺線 ${i + 1}`}</span>
+        <span style="display:flex;align-items:center;gap:8px"><b style="color:var(--green)">${m.meters}m</b><button class="iconbtn" data-delmeasurement="${i}">🗑️</button></span>
+      </div>`).join('')}
+    </div>` : ''}`;
+
+  const galleryBody = `
+    <div class="photos">
+      ${state.roomPhotos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delroomphoto="${p.id}:${esc(p.path)}">×</button></div>`).join('')}
+      <div class="ph add" data-addroomphoto>＋</div>
+    </div>
+    <input type="file" accept="image/*" multiple id="roomPhotoInput" style="display:none">
+    <input type="file" accept="image/*" id="floorPlanInput" style="display:none">`;
+
+  return `
+    ${topBar}
+    ${roomTabsHtml}
+    <div class="card">
+      <div class="rowflex"><h3 style="margin:0">呢間房嘅平面圖</h3>${hasFloorPlan && !hasScale ? '<span class="pill o">未校準</span>' : ''}</div>
+      ${floorPlanBody}
+    </div>
+    <div class="card">
+      <h3>呢間房嘅設計參考相</h3>
+      ${galleryBody}
+      <div class="dt">同平面圖分開存，純粹畀你儲靈感相，唔會用嚟度尺。</div>
+    </div>`;
 }
 
 function attachNeedsEvents(project) {
@@ -933,6 +1053,125 @@ function attachNeedsEvents(project) {
 
   appEl.querySelectorAll('[data-stepprev]').forEach(el => el.addEventListener('click', () => {
     state.needsStep = Math.max(0, state.needsStep - 1); renderNeeds();
+  }));
+
+  // ---------------- 設計＋平面圖（state.needsView === 'design'） ----------------
+  const designRoom = state.rooms.find(r => r.id === state.activeRoomId);
+  const floorPlanInput = document.getElementById('floorPlanInput');
+  appEl.querySelectorAll('[data-uploadfloorplan],[data-replacefloorplan]').forEach(el => el.addEventListener('click', () => {
+    if (floorPlanInput) floorPlanInput.click();
+  }));
+  if (floorPlanInput) floorPlanInput.addEventListener('change', async () => {
+    if (!floorPlanInput.files || !floorPlanInput.files.length || !designRoom) return;
+    toast('上載緊平面圖…');
+    try {
+      const updated = await uploadFloorPlan(state.user.id, designRoom.id, floorPlanInput.files[0]);
+      Object.assign(designRoom, updated);
+      state.floorPlanPendingPoint = null;
+      state.pendingCalibrationLine = null;
+      toast('已上載平面圖 ✓');
+      renderNeeds();
+    } catch (e) { toast('上載失敗：' + e.message, true); }
+  });
+
+  const resetScaleBtn = appEl.querySelector('[data-resetscale]');
+  if (resetScaleBtn) resetScaleBtn.addEventListener('click', async () => {
+    if (!confirm('重設比例尺？已經度好嘅尺寸會一齊清走，要重新校準。')) return;
+    try {
+      await updateRoom(designRoom.id, { floor_plan_scale: null, floor_plan_measurements: [] });
+      designRoom.floor_plan_scale = null;
+      designRoom.floor_plan_measurements = [];
+      state.pendingCalibrationLine = null;
+      toast('已重設');
+      renderNeeds();
+    } catch (e) { toast(e.message, true); }
+  });
+
+  const floorPlanImg = document.getElementById('floorPlanImg');
+  if (floorPlanImg) floorPlanImg.addEventListener('click', async (ev) => {
+    const rect = floorPlanImg.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+    if (!state.floorPlanPendingPoint) {
+      state.floorPlanPendingPoint = { x, y };
+      renderNeeds();
+      return;
+    }
+    const line = { x1: state.floorPlanPendingPoint.x, y1: state.floorPlanPendingPoint.y, x2: x, y2: y };
+    state.floorPlanPendingPoint = null;
+    const hasScale = designRoom.floor_plan_scale !== null && designRoom.floor_plan_scale !== undefined;
+    if (!hasScale) {
+      state.pendingCalibrationLine = line;
+      renderNeeds();
+      return;
+    }
+    const meters = Math.round(pixelDistance(line, designRoom.floor_plan_width, designRoom.floor_plan_height) * designRoom.floor_plan_scale * 100) / 100;
+    const measurements = (designRoom.floor_plan_measurements || []).concat([{ ...line, meters }]);
+    try {
+      await updateRoom(designRoom.id, { floor_plan_measurements: measurements });
+      designRoom.floor_plan_measurements = measurements;
+      renderNeeds();
+    } catch (e) { toast(e.message, true); renderNeeds(); }
+  });
+
+  const confirmCalBtn = document.getElementById('confirmCalibration');
+  if (confirmCalBtn) confirmCalBtn.addEventListener('click', async () => {
+    const metersVal = +document.getElementById('calibrationMeters').value;
+    if (!metersVal || metersVal <= 0) { toast('請輸入有效長度', true); return; }
+    const line = state.pendingCalibrationLine;
+    const pixelDist = pixelDistance(line, designRoom.floor_plan_width, designRoom.floor_plan_height);
+    const scale = metersVal / pixelDist;
+    const measurement = { ...line, meters: metersVal, isCalibration: true };
+    try {
+      confirmCalBtn.disabled = true; confirmCalBtn.innerHTML = '<span class="spin"></span>';
+      await updateRoom(designRoom.id, { floor_plan_scale: scale, floor_plan_measurements: [measurement] });
+      designRoom.floor_plan_scale = scale;
+      designRoom.floor_plan_measurements = [measurement];
+      state.pendingCalibrationLine = null;
+      toast('已校準比例尺 ✓');
+      renderNeeds();
+    } catch (e) { toast(e.message, true); confirmCalBtn.disabled = false; confirmCalBtn.textContent = '確認校準'; }
+  });
+  const cancelCalBtn = document.getElementById('cancelCalibration');
+  if (cancelCalBtn) cancelCalBtn.addEventListener('click', () => { state.pendingCalibrationLine = null; renderNeeds(); });
+
+  appEl.querySelectorAll('[data-delmeasurement]').forEach(el => el.addEventListener('click', async () => {
+    const idx = +el.dataset.delmeasurement;
+    const measurements = (designRoom.floor_plan_measurements || []).slice();
+    const removed = measurements.splice(idx, 1)[0];
+    const patch = { floor_plan_measurements: measurements };
+    if (removed && removed.isCalibration) { patch.floor_plan_scale = null; patch.floor_plan_measurements = []; }
+    try {
+      await updateRoom(designRoom.id, patch);
+      Object.assign(designRoom, patch);
+      toast('已刪除');
+      renderNeeds();
+    } catch (e) { toast(e.message, true); }
+  }));
+
+  const roomPhotoInput = document.getElementById('roomPhotoInput');
+  appEl.querySelectorAll('[data-addroomphoto]').forEach(el => el.addEventListener('click', () => {
+    if (roomPhotoInput) roomPhotoInput.click();
+  }));
+  if (roomPhotoInput) roomPhotoInput.addEventListener('change', async () => {
+    if (!roomPhotoInput.files || !roomPhotoInput.files.length || !designRoom) return;
+    toast('上載緊相片…');
+    try {
+      const rows = [];
+      for (const file of Array.from(roomPhotoInput.files)) rows.push(await uploadRoomPhoto(state.user.id, designRoom.id, file));
+      state.roomPhotos = state.roomPhotos.concat(rows);
+      toast(`已上載 ${rows.length} 張相`);
+      renderNeeds();
+    } catch (e) { toast('上載失敗：' + e.message, true); }
+  });
+  appEl.querySelectorAll('[data-delroomphoto]').forEach(el => el.addEventListener('click', async () => {
+    const [photoId, path] = el.dataset.delroomphoto.split(':');
+    if (!confirm('刪除呢張相？')) return;
+    const backup = state.roomPhotos;
+    state.roomPhotos = backup.filter(p => p.id !== photoId);
+    renderNeeds();
+    try { await deleteRoomPhoto(photoId, path); toast('已刪除'); }
+    catch (e) { state.roomPhotos = backup; toast(e.message, true); renderNeeds(); }
   }));
 }
 

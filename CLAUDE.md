@@ -20,6 +20,7 @@ Push（`github_push.py`，永不 git CLI・HTTPS・一 run 一 commit・**開工
 | §6 Phase 5（Deploy Vercel） | ✅ 已完成（2026-07-30）——live 喺 **https://make-my-home-xi.vercel.app**，smoke test 過（0 console error，375px 冇爆版，root rewrite正常） |
 | Task 1 刪除 project＋Task 2「法律＋財務」module | ✅ 已完成（2026-09-13，見 CHANGELOG）——刪除 project 改用打名確認 modal；新 tab「法律財務」（律師／按揭），新 table `reno_legal_finance_records` 已跑落 Supabase；按揭仲加咗物業總值/首期%/回贈% 自動計算 |
 | Task 3 總支出總覽 | ✅ 已完成（2026-09-13，見 CHANGELOG）——3a audit 確認 schema 冇法分已付/待付，Stephanie 揀咗「只做總支出承諾」；新 tab「總支出」淨計已落實金額，冇改 schema |
+| 「設計＋平面圖」（每間房獨立） | ✅ 已完成（2026-09-13，見 CHANGELOG）——起之前用 Claude Design 畀 Stephanie 揀方案；平面圖可以喺相上面撳兩下畫線度尺（第一條線校準比例尺），設計參考相獨立一個 gallery；`reno_rooms` 加 4 個 floor_plan_* 欄位，新表 `reno_room_photos` |
 
 ## 下一步
 
@@ -31,7 +32,7 @@ Google OAuth＋URL allowlist 都做咗，真實登入＋CRUD 已經喺 productio
 
 - Stack：單頁 vanilla JS + Supabase（Auth/DB/Storage）+ Vercel
 - 登入分界：計算器/教學內容免登入；報價比較／需求規劃／驗收記錄要 Gmail 登入
-- 電掣規劃：逐間房問卷（唔做平面圖拖拉）
+- 電掣規劃：逐間房問卷（唔做平面圖拖拉掣位）——呢條淨係指電掣位置唔用拖拉 UI，同下面「設計＋平面圖」嘅相片度尺工具係兩回事
 - 報價比較：公司卡片＋大類金額＋10 條紅旗 checklist（唔做 AI 解析，留 Phase 2）
 - 驗收相片：綁工序 stage 層，可加備註
 - 名：廣東話主牌「裝修無伏」＋英文副牌 MakeMyHome

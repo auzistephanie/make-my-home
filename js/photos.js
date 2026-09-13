@@ -81,3 +81,53 @@ async function uploadPhotos(userId, projectId, stageId, fileList) {
   }
   return rows;
 }
+
+// Reads a Blob's actual pixel dimensions (a quick extra decode — cheap since
+// the blob is already compressed to ≤300KB). Needed so measurement math can
+// convert normalized (0-1) point coordinates to real pixels without depending
+// on however large the <img> happens to be rendered on screen.
+function loadImageDims(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => { URL.revokeObjectURL(url); resolve({ width: img.naturalWidth, height: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('讀取相片尺寸失敗')); };
+    img.src = url;
+  });
+}
+
+// Compresses + uploads a room's floor plan image, updates reno_rooms with the
+// new path, and clears any previous measurements/scale — they were measured
+// against the old image and no longer mean anything against a new one.
+async function uploadFloorPlan(userId, roomId, file) {
+  const blob = await compressImage(file);
+  const { width, height } = await loadImageDims(blob);
+  const path = await uploadFloorPlanFile(userId, roomId, blob);
+  return updateRoom(roomId, {
+    floor_plan_path: path,
+    floor_plan_width: width,
+    floor_plan_height: height,
+    floor_plan_scale: null,
+    floor_plan_measurements: [],
+  });
+}
+
+// Compresses + uploads one design reference photo for a room (reno_room_photos —
+// separate from the floor plan; these are just a gallery, never measured on).
+async function uploadRoomPhoto(userId, roomId, file, caption) {
+  const blob = await compressImage(file);
+  const ext = 'jpg';
+  const path = `${userId}/room-photos/${roomId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from('reno-photos').upload(path, blob, {
+    contentType: 'image/jpeg',
+    upsert: false,
+  });
+  if (error) {
+    console.error('[photos] room photo upload failed:', error);
+    throw new Error(error.message || '相片上載失敗');
+  }
+  const row = await createRoomPhotoRecord(userId, roomId, path, caption);
+  const { data: signed } = await roomPhotoSignedUrl(path);
+  row.url = signed ? signed.signedUrl : '';
+  return row;
+}

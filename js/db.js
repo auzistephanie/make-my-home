@@ -280,3 +280,53 @@ async function deleteLegalFinanceRecord(id) {
   const { error } = await withTimeout(supabase.from('reno_legal_finance_records').delete().eq('id', id));
   if (error) dbThrow('deleteLegalFinanceRecord', error);
 }
+
+// ---------------- reno_rooms floor plan (columns, not a separate table) ----------------
+// path/scale/measurements live directly on reno_rooms — one floor plan per
+// room, unlike the many-per-room design gallery below. Takes a compressed
+// JPEG Blob (from photos.js's compressImage), not a raw File — no .name to
+// sniff an extension from, so the path is always .jpg.
+async function uploadFloorPlanFile(userId, roomId, blob) {
+  const path = `${userId}/floorplans/${roomId}-${Date.now()}.jpg`;
+  const { error } = await withTimeout(supabase.storage.from('reno-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true }));
+  if (error) dbThrow('uploadFloorPlanFile', error);
+  return path;
+}
+
+function floorPlanSignedUrl(path) {
+  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+}
+
+// ---------------- reno_room_photos (設計參考相, per room) ----------------
+async function listRoomPhotos(roomId) {
+  const { data, error } = await withTimeout(supabase
+    .from('reno_room_photos')
+    .select('*')
+    .eq('room_id', roomId)
+    .order('created_at', { ascending: true }));
+  if (error) dbThrow('listRoomPhotos', error);
+  return data;
+}
+
+async function createRoomPhotoRecord(userId, roomId, path, caption) {
+  const { data, error } = await withTimeout(supabase
+    .from('reno_room_photos')
+    .insert({ user_id: userId, room_id: roomId, path, caption: caption || null })
+    .select()
+    .single());
+  if (error) dbThrow('createRoomPhotoRecord', error);
+  return data;
+}
+
+async function deleteRoomPhoto(id, path) {
+  const { error: dbErr } = await withTimeout(supabase.from('reno_room_photos').delete().eq('id', id));
+  if (dbErr) dbThrow('deleteRoomPhoto', dbErr);
+  if (path) {
+    const { error: stErr } = await withTimeout(supabase.storage.from('reno-photos').remove([path]));
+    if (stErr) console.error('[db] deleteRoomPhoto storage cleanup failed:', stErr); // record already gone; don't block UI on this
+  }
+}
+
+function roomPhotoSignedUrl(path) {
+  return supabase.storage.from('reno-photos').createSignedUrl(path, 60 * 60);
+}

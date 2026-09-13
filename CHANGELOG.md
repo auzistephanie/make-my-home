@@ -6,6 +6,14 @@
 
 - 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。
 
+- 2026-09-13（七度追加）：新功能「設計＋平面圖」（每間房獨立）。Stephanie 要求「先睇 preview 先起」，用 Claude Design 砌咗兩個方案畀佢揀（方案 A：相片＋手動尺寸表；方案 B：相片上面直接度尺，撳兩下畫線、第一條線校準比例尺、之後嘅線自動計），揀咗方案 B，仲要求平面圖同設計參考相都要分開每間房自己一份（唔係成層樓一個 pool）。
+
+  Schema：`reno_rooms` 加 `floor_plan_path`／`floor_plan_scale`／`floor_plan_measurements`（jsonb 度尺線陣列）／`floor_plan_width`／`floor_plan_height`；新表 `reno_room_photos`（純相片 gallery，唔涉及度尺，RLS 同 `reno_legal_finance_records` 一樣 owner-only）。
+
+  度尺做法：起止點存做 0–1 normalized 座標（相對平面圖原圖 naturalWidth/Height，唔受畫面顯示大小影響）；第一條線要求輸入實際長度校準比例尺（米/像素），之後畫嘅線自動用嗰個 scale 計出米數；SVG overlay 用 viewBox 對齊原圖尺寸畫度尺線＋標籤；delete 校準線會連埋 scale 同全部度尺一齊清（因為之後嘅線都靠嗰條線嘅 scale 計，冇咗校準線個 scale 就唔再有意義）。UI 加喺 #/needs 底下第三個 view（同「房間問卷」「需求書」平排嘅新掣「📐 設計＋平面圖」），沿用房間 tabs 切換。
+
+  本機驗證咗（stub 環境）：冇平面圖嘅上載提示、上載後兩點畫線觸發校準、確認校準後 scale／第一條線正確計算並儲存、之後嘅線用返個 scale 自動計出正確米數、刪除校準線正確清埋 scale 同全部線、設計參考相上載/顯示/刪除都正常，0 code-level console error（得返舊 test session 遺留嘅 stale log 同一個外部 placeholder 圖網絡失敗，同呢個功能本身無關）。
+
 - 2026-09-13（六度追加）：兩個修正。①完成房間問卷之後改去 #/dashboard／下一間房，Stephanie 話直接去「需求書」畫面更有用（呢個先係成個 wizard 嘅實際產出）——已改做撳「完成」即刻切去 `state.needsView = 'summary'`，留喺 #/needs 顯示需求書＋掣位清單。②**全屋掣位清單漏晒燈掣**——wizard 第 4 步一路有問主燈單控/雙控、調光掣、特別燈光需求，但掣位清單淨係讀 `answers.sockets`，燈光資料完全冇顯示，等於俾電工睇嗰張清單漏走晒燈掣位置。加咗 `lightingSwitchRows()`，將主燈開關（跟單控/雙控自動計 1 或 2 個位）、調光掣、特別燈光需求都變成同插座一樣嘅列，`renderNeedsSummary`（HTML 表）同 `generateSocketListText`（.txt 匯出）都同步顯示；標題改做「全屋掣位＋燈掣清單」。冇改 database；本機驗證咗 HTML 表同文字匯出都正確顯示燈掣列，0 console error。
 
 - 2026-09-13（五度追加）：房間需求問卷三個修正。①**用途／傢俬冇因應房型自動建議**——揀「廚房」呢啲常見房型之後，第 1 步「主要用途」仲係要由零打字，「大型傢俬」都淨係得自由輸入，冇建議。加咗 `ROOM_USAGE_SUGGESTIONS`／`ROOM_FURNITURE_SUGGESTIONS`：已知房型（客飯廳/主人房/細房/廚房/浴室）會自動填低常見用途（可以自己改），傢俬field 下面加返可以撳嘅建議 chip（似步驟 2 儲物類型嗰啲），撳一下就會加/減入去個文字field，唔使成隻字打。②**電掣插座清單全屋用同一份，廚房都問「床頭插座」**——`SOCKET_TYPES` 之前係成個 app 淨係得一份，同房型完全冇關，廚房/浴室都會問啲完全用唔到嘅插座類型。加咗 `ROOM_SOCKET_TYPES`（廚房：雪櫃/爐具/檯面/洗衣機插座；浴室：風筒/洗衣機/熱水爐；客飯廳：電視/冷氣/網絡/一般插座），未知房名 fallback 用返原本嗰份（啱做臥室/書房）。改埋掣位清單生成（`renderNeedsSummary`／`generateSocketListText`）同儲存邏輯都跟返房型讀寫正確嘅 key，唔會漏走資料。③**行完 4 步撳「完成」淨係留喺同一個畫面，冇任何後續**——而家會提示邊間房搞掂咗，自動跳去下一間未完成嘅房繼續（如果有），全部房都做晒就帶去 Dashboard，唔會再撳完完成掣都唔知做咩。冇改 database；本機驗證咗三個修正（廚房用途/傢俬建議、廚房/浴室/客飯廳插座清單、單房/多房完成後跳轉），0 console error。
