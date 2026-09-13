@@ -14,19 +14,18 @@ Push（`github_push.py`，永不 git CLI・HTTPS・一 run 一 commit・**開工
 | `index.html` | 靜態版已完成＋Playwright 驗證通過 — 工期/預算計算器、裝修旅程、設計師溝通指南、驗收清單、伏位警示、術語字典，全部免登入 |
 | `preview.html` | UI mockup（假數據）— Landing／登入／Dashboard／需求+電掣／報價比較／施工驗收 六個屏幕，畀 Stephanie 睇過＋批准 |
 | `CLAUDE_BUILD_SPEC.md` §6 Phase 1（Supabase schema/RLS/storage） | ✅ 已完成（2026-07-30，見 CHANGELOG）——表名由 `projects/rooms/quotes/stages/photos` 改咗做 `reno_` 前綴（共用 project 避免撞名） |
-| §6 Phase 2（Google OAuth Auth） | 🟡 code 寫咗（`js/auth.js`），卡喺 Stephanie 人手步驟（Google Cloud Console＋Supabase Dashboard，見下面「人手步驟」）先可以真正驗證 |
-| §6 Phase 3（App 四大 module） | ✅ 已完成（2026-07-30）——`app.html`＋`js/db.js`/`photos.js`/`content.js`＋`css/shared.css`；真 CRUD 待 OAuth 通咗先可以真正跑（同 Phase 2 卡住嘅係同一個人手步驟） |
+| §6 Phase 2（Google OAuth Auth） | ✅ 已完成——`js/auth.js`＋Google Cloud Console／Supabase Dashboard 人手步驟都做咗；2026-09-13 由 auth_logs 確認 auzistephanie@gmail.com 真實登入正常 |
+| §6 Phase 3（App 四大 module） | ✅ 已完成（2026-07-30）——`app.html`＋`js/db.js`/`photos.js`/`content.js`＋`css/shared.css`；2026-09-13 由 Supabase edge_logs 確認真 CRUD（project／rooms／quotes／stages／photos）已經喺 production 正常跑緊 |
 | §6 Phase 4（Landing page） | ✅ 已完成（2026-07-30）——`landing.html`＋`js/content.js` 加咗 `DICT`＋`css/shared.css` 加咗 landing 專屬 class；375px Playwright 實測冇爆版、兩個計算器 input→output 同 `index.html` 一致、0 console error；Lighthouse mobile 全部 category ≥90（見 CHANGELOG） |
 | §6 Phase 5（Deploy Vercel） | ✅ 已完成（2026-07-30）——live 喺 **https://make-my-home-xi.vercel.app**，smoke test 過（0 console error，375px 冇爆版，root rewrite正常） |
-| Task 1 刪除 project＋Task 2「法律＋財務」module | ✅ 已完成（2026-09-13，見 CHANGELOG）——刪除 project 改用打名確認 modal；新 tab「法律財務」（律師／按揭），新 table `reno_legal_finance_records` 已跑落 Supabase；真 CRUD 同樣卡喺 OAuth 人手步驟 |
+| Task 1 刪除 project＋Task 2「法律＋財務」module | ✅ 已完成（2026-09-13，見 CHANGELOG）——刪除 project 改用打名確認 modal；新 tab「法律財務」（律師／按揭），新 table `reno_legal_finance_records` 已跑落 Supabase；按揭仲加咗物業總值/首期%/回贈% 自動計算 |
 | Task 3 總支出總覽 | ✅ 已完成（2026-09-13，見 CHANGELOG）——3a audit 確認 schema 冇法分已付/待付，Stephanie 揀咗「只做總支出承諾」；新 tab「總支出」淨計已落實金額，冇改 schema |
 
 ## 下一步
 
-Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做得到嘅步驟，做完先可以真正登入用：
-1. **Google OAuth**：Google Cloud Console 攞 client id/secret（redirect URI 填 `https://cmtubaxlniglklmdwlzs.supabase.co/auth/v1/callback`）→ 貼入 [Supabase Dashboard Auth Providers](https://supabase.com/dashboard/project/cmtubaxlniglklmdwlzs/auth/providers)
-2. **URL allowlist**：production domain 已定（`make-my-home-xi.vercel.app`），去 [Supabase Auth URL Configuration](https://supabase.com/dashboard/project/cmtubaxlniglklmdwlzs/auth/url-configuration) 加 Site URL + redirect allowlist
-兩樣做完之後，跟 spec §8 嘅 DoD 逐條驗一次真實登入＋CRUD＋RLS 隔離（兩個唔同 Google 戶口互相見唔到對方資料）。
+Google OAuth＋URL allowlist 都做咗，真實登入＋CRUD 已經喺 production 確認正常。仲未做嘅：spec §8 DoD 嗰條「兩個唔同 Google 戶口互相見唔到對方資料」RLS 隔離測試。
+
+⚠️ **注意**：呢個 Supabase project 同 Travel App 共用。supabase-js v2 用 Navigator Locks 跨分頁序列化 session refresh——同時開好多個分頁（尤其兩個 app 一齊開）會令個 lock 卡死，之後任何分頁嘅 DB 操作都可能永遠 hang 住冇反應冇錯誤（2026-09-13 遇到過，見 CHANGELOG「撳加入按揭記錄冇反應」）。已加 15 秒 timeout 令錯誤唔會再靜靜地卡死，但治本方法係唔好同時開太多分頁，撞到就關晒啲分頁再開新嘅。
 
 ## 已鎖定嘅產品決定（唔好重新問）
 
