@@ -65,6 +65,19 @@ async function copyText(text, btn) {
   } catch (e) { toast('複製失敗，請手動選取', true); }
 }
 
+// Guards against a stuck cross-tab Supabase auth lock — a real supabase-js v2
+// footgun: it serializes session refresh across same-origin tabs via a browser
+// lock, and if a stale/background tab never released it, every future call can
+// hang forever with no request ever firing and no error. Wrapping a call in
+// this surfaces a clear, actionable message instead of an infinite spinner.
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+const STUCK_SESSION_MSG = '請求逾時——可能係開得太耐嘅分頁卡住咗登入 session。請關晒呢個 app 嘅所有分頁（如果同時開緊其他共用同一個 Supabase 專案嘅 app 都一齊關），再重新打開試多次。';
+
 // ---------------- global state ----------------
 const state = {
   session: null,
@@ -1450,7 +1463,7 @@ function attachLegalEvents(project, activeTab) {
     const backup = state.legalRecords.slice();
     state.legalRecords = state.legalRecords.filter(r => r.id !== id);
     renderLegal();
-    try { await deleteLegalFinanceRecord(id); toast('已刪除'); }
+    try { await withTimeout(deleteLegalFinanceRecord(id), 15000, STUCK_SESSION_MSG); toast('已刪除'); }
     catch (e) { state.legalRecords = backup; toast(e.message, true); renderLegal(); }
   }));
   const saveBtn = document.getElementById('l-save');
@@ -1477,8 +1490,8 @@ function attachLegalEvents(project, activeTab) {
     }
     try {
       saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spin"></span>';
-      if (state.editingLegalId) await updateLegalFinanceRecord(state.editingLegalId, fields);
-      else await createLegalFinanceRecord(state.user.id, project.id, fields);
+      if (state.editingLegalId) await withTimeout(updateLegalFinanceRecord(state.editingLegalId, fields), 15000, STUCK_SESSION_MSG);
+      else await withTimeout(createLegalFinanceRecord(state.user.id, project.id, fields), 15000, STUCK_SESSION_MSG);
       toast('已儲存');
       state.legalFormOpen = false; state.editingLegalId = null;
       renderLegal();
