@@ -19,7 +19,7 @@
 <script>
 /* ============================================================
    裝修無伏 app.html — SPA, hash routing.
-   Routes: #/login #/dashboard #/needs #/quotes #/build #/legal
+   Routes: #/login #/dashboard #/needs #/quotes #/build #/legal #/spending
    全部寫入 optimistic update + 失敗 toast（見 CLAUDE_BUILD_SPEC.md §5.2）
    ============================================================ */
 
@@ -172,6 +172,7 @@ async function route() {
     if (path === '#/quotes') return renderQuotes();
     if (path === '#/build') return renderBuild();
     if (path === '#/legal') return renderLegal();
+    if (path === '#/spending') return renderSpending();
     location.hash = '#/login';
   } catch (err) {
     console.error('[route] failed:', err);
@@ -197,6 +198,7 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
     { key: 'quotes',    hash: '#/quotes',    ic: '📑', label: '揀公司' },
     { key: 'build',     hash: '#/build',     ic: '🧱', label: '施工' },
     { key: 'legal',     hash: '#/legal',     ic: '⚖️', label: '法律財務' },
+    { key: 'spending',  hash: '#/spending',  ic: '💰', label: '總支出' },
   ];
   return `
     <div class="apphead">
@@ -1379,6 +1381,66 @@ function attachLegalEvents(project, activeTab) {
       saveBtn.disabled = false; saveBtn.textContent = state.editingLegalId ? '儲存' : '加入';
     }
   });
+}
+
+// ================================================================
+// #/spending — 總支出總覽（Task 3b）
+//
+// Step 3a audit（見 CHANGELOG）發現現有 schema 冇任何欄位系統性咁分「已付」
+// 同「待付」——quotes.total／legal_finance.quote_amount 都只係金額＋一個文字
+// status。跟 Stephanie 確認咗做法：唔改 schema、唔勉強分已付/待付，淨係加總
+// 「已落實」嘅金額（signed 合約／已選定額外工程／status 係已落實或完成嘅法律
+// 財務記錄），未落實嘅候選報價唔計入。
+// ================================================================
+const SPENDING_COMMITTED_STATUS = ['已落實', '完成'];
+
+async function renderSpending() {
+  if (!(await guard())) return;
+  const project = await resolveProjects();
+  if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
+
+  const [quotes, legalRecords] = await Promise.all([
+    listQuotes(project.id),
+    listLegalFinanceRecords(project.id),
+  ]);
+
+  const contract = quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
+  const otherQuotes = quotes.filter(q => q !== contract);
+  let renoCommitted, renoNote;
+  if (contract) {
+    const responsibility = responsibilityPlan(contract, otherQuotes);
+    const selectedExtraTotal = responsibility
+      .filter(item => item.status === 'external' && item.selectedQuote)
+      .reduce((sum, item) => sum + (+item.selectedQuote.total || 0), 0);
+    renoCommitted = (+contract.total || 0) + selectedExtraTotal;
+    renoNote = '已簽主合約' + (selectedExtraTotal ? ' ＋ 已選定額外工程' : '');
+  } else {
+    const signedQuotes = quotes.filter(q => q.status === 'signed');
+    renoCommitted = signedQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
+    renoNote = signedQuotes.length ? '已標記「已簽約」嘅報價' : '未有已簽約報價';
+  }
+
+  const lawyerRecords = legalRecords.filter(r => r.category === 'lawyer' && SPENDING_COMMITTED_STATUS.includes(r.status));
+  const mortgageRecords = legalRecords.filter(r => r.category === 'mortgage' && SPENDING_COMMITTED_STATUS.includes(r.status));
+  const lawyerCommitted = lawyerRecords.reduce((sum, r) => sum + (+r.quote_amount || 0), 0);
+  const mortgageCommitted = mortgageRecords.reduce((sum, r) => sum + (+r.quote_amount || 0), 0);
+
+  const rows = [
+    { label: '裝修工程', note: renoNote, amount: renoCommitted },
+    { label: '律師', note: `${lawyerRecords.length} 項已落實／完成`, amount: lawyerCommitted },
+    { label: '按揭手續', note: `${mortgageRecords.length} 項已落實／完成`, amount: mortgageCommitted },
+  ];
+  const grandTotal = rows.reduce((sum, r) => sum + r.amount, 0);
+
+  const body = `
+    <div class="hero-num"><div class="n">${money(grandTotal)}</div><div class="l">已落實總支出承諾</div></div>
+    <div class="note">呢個數只計「已落實」嘅金額——已簽合約、已選定嘅額外工程報價，同埋法律財務入面狀態係「已落實」或「完成」嘅記錄。報價中／未落實嘅候選金額唔會計入；想睇返逐項，去「揀公司」或「法律財務」對照。</div>
+    <div class="card">
+      <h3>按 module 分項</h3>
+      ${rows.map(r => `<div class="deadlinerow"><b>${money(r.amount)}</b><span>${esc(r.label)} · ${esc(r.note)}</span></div>`).join('')}
+    </div>`;
+  appEl.innerHTML = chromeShell('spending', body, projectRowHtml());
+  attachChromeEvents();
 }
 
 // ================================================================

@@ -19,7 +19,7 @@ Push（`github_push.py`，永不 git CLI・HTTPS・一 run 一 commit・**開工
 | §6 Phase 4（Landing page） | ✅ 已完成（2026-07-30）——`landing.html`＋`js/content.js` 加咗 `DICT`＋`css/shared.css` 加咗 landing 專屬 class；375px Playwright 實測冇爆版、兩個計算器 input→output 同 `index.html` 一致、0 console error；Lighthouse mobile 全部 category ≥90（見 CHANGELOG） |
 | §6 Phase 5（Deploy Vercel） | ✅ 已完成（2026-07-30）——live 喺 **https://make-my-home-xi.vercel.app**，smoke test 過（0 console error，375px 冇爆版，root rewrite正常） |
 | Task 1 刪除 project＋Task 2「法律＋財務」module | ✅ 已完成（2026-09-13，見 CHANGELOG）——刪除 project 改用打名確認 modal；新 tab「法律財務」（律師／按揭），新 table `reno_legal_finance_records` 已跑落 Supabase；真 CRUD 同樣卡喺 OAuth 人手步驟 |
-| Task 3 總支出總覽 | 🟡 3a schema audit 已完成並貼咗畀 Stephanie 確認，3b（實作）等確認先做 |
+| Task 3 總支出總覽 | ✅ 已完成（2026-09-13，見 CHANGELOG）——3a audit 確認 schema 冇法分已付/待付，Stephanie 揀咗「只做總支出承諾」；新 tab「總支出」淨計已落實金額，冇改 schema |
 
 ## 下一步
 
@@ -27,8 +27,6 @@ Code 五個 phase 全部起完＋部署咗。剩返兩個淨係 Stephanie 先做
 1. **Google OAuth**：Google Cloud Console 攞 client id/secret（redirect URI 填 `https://cmtubaxlniglklmdwlzs.supabase.co/auth/v1/callback`）→ 貼入 [Supabase Dashboard Auth Providers](https://supabase.com/dashboard/project/cmtubaxlniglklmdwlzs/auth/providers)
 2. **URL allowlist**：production domain 已定（`make-my-home-xi.vercel.app`），去 [Supabase Auth URL Configuration](https://supabase.com/dashboard/project/cmtubaxlniglklmdwlzs/auth/url-configuration) 加 Site URL + redirect allowlist
 兩樣做完之後，跟 spec §8 嘅 DoD 逐條驗一次真實登入＋CRUD＋RLS 隔離（兩個唔同 Google 戶口互相見唔到對方資料）。
-
-另外：Task 3a 嘅欄位對應表已經貼咗畀 Stephanie，等佢確認先開始 3b（總支出總覽 UI）。
 
 ## 已鎖定嘅產品決定（唔好重新問）
 
