@@ -106,11 +106,12 @@ function scoreColor(score) {
 
 // 報價 5 大類金額（breakdown jsonb 嘅 key）
 const BREAKDOWN_CATS = [
-  { key: 'wet',   label: '泥水' },
-  { key: 'me',    label: '水電' },
-  { key: 'wood',  label: '木工' },
-  { key: 'paint', label: '油漆' },
-  { key: 'misc',  label: '雜項' },
+  { key: 'wet',       label: '泥水' },
+  { key: 'me',        label: '水電' },
+  { key: 'wood',      label: '木工' },
+  { key: 'furniture', label: '訂造傢俬' },
+  { key: 'paint',     label: '油漆' },
+  { key: 'misc',      label: '雜項' },
 ];
 
 // ---------- 需求規劃：電掣插座類型（掣位清單建議高度，新增內容 — index.html 冇呢部份，

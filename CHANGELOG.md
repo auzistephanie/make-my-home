@@ -2,6 +2,8 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。
+
 - 2026-09-13（追加）：修「撳加入按揭記錄冇反應」——根因唔喺 app code，係 supabase-js v2 用 Navigator Locks 跨分頁序列化 session refresh；Stephanie 今日開咗好多個分頁（MakeMyHome＋共用同一個 Supabase 專案嘅 Travel App），舊分頁卡住個 lock 冇放，之後任何一個分頁嘅 DB 呼叫都可以永遠 hang 住——冇 network request、冇錯誤、UI 淨係停喺 loading spinner。喺 production 用一個新分頁＋一個舊（污染咗）分頁分別重現咗：新分頁 3 秒內正常收到 RLS 拒絕嘅錯誤 toast，舊分頁 3 秒後仲係完全冇反應。修法：加 `withTimeout()` helper，包住法律財務 module 嘅 create/update/delete 三個 call，15 秒後逾時會彈返一個講明「可能係開得太耐嘅分頁卡住 session，關晒啲分頁再試」嘅錯誤 toast，唔會再永遠卡住冇反應。即時解法：Stephanie 要關晒 make-my-home 同 travel app 嘅所有分頁，開返新嘅先再試。
 
 - 2026-09-13（再下半）：按揭記錄自動計算。加 3 個新欄位（`property_price`／`down_payment_pct`／`cash_rebate_pct`）：物業總值＋首期% 自動計貸款額，貸款額＋利率＋年期自動計每月供款／累計已付利息，貸款額＋回贈% 自動計現金回贈金額——全部可以自己覆蓋，覆蓋咗就唔會再自動更新，撳「重新自動計算」攞返建議值（用固定利率年金公式，僅供參考，銀行實際首兩年利率同之後通常唔同）。移除按揭 sub-tab 嘅「報價（$）」（律師 sub-tab 保留），改用物業總值。按揭狀態改做「申請中／已批核／已落實／完成」，律師狀態不變（已聯絡／報價中／已落實／完成）；Task 3b 總支出總覽嘅按揭分項相應改用「累計雜費－現金回贈」嘅淨支出（貸款額本身係借嚟嘅錢，唔係裝修支出）。375px 驗證咗物業總值/首期→貸款額、貸款額→每月供款/利息、貸款額→回贈 三條自動計算鏈，同覆蓋後唔會被打亂嘅行為，0 console error。
