@@ -65,19 +65,6 @@ async function copyText(text, btn) {
   } catch (e) { toast('複製失敗，請手動選取', true); }
 }
 
-// Guards against a stuck cross-tab Supabase auth lock — a real supabase-js v2
-// footgun: it serializes session refresh across same-origin tabs via a browser
-// lock, and if a stale/background tab never released it, every future call can
-// hang forever with no request ever firing and no error. Wrapping a call in
-// this surfaces a clear, actionable message instead of an infinite spinner.
-function withTimeout(promise, ms, message) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
-  ]);
-}
-const STUCK_SESSION_MSG = '請求逾時——可能係開得太耐嘅分頁卡住咗登入 session。請關晒呢個 app 嘅所有分頁（如果同時開緊其他共用同一個 Supabase 專案嘅 app 都一齊關），再重新打開試多次。';
-
 // ---------------- global state ----------------
 const state = {
   session: null,
@@ -88,6 +75,7 @@ const state = {
   activeRoomId: null,
   needsStep: 0,
   needsView: 'wizard', // 'wizard' | 'summary'
+  addRoomFormOpen: false,
   quotes: [],
   quoteFormOpen: false,
   contractFormOpen: false,
@@ -411,7 +399,7 @@ async function renderDashboard() {
       </div>
       <div class="card deadlinecard">
         <div class="rowflex"><h3>嚟緊期限</h3><span class="dt">按開工日倒數</span></div>
-        ${deadlineRows.length ? deadlineRows.map(r => `<div class="deadlinerow"><b>${r.date}</b><span>${r.label}</span></div>`).join('') : `<div class="empty compact">${project.start_date ? '準備階段嘅提醒已經冚晒，專心跟進施工同驗收就得。' : '設定開工日期後，呢度會幫你倒數重要期限。'}</div>`}
+        ${deadlineRows.length ? deadlineRows.map(r => `<div class="deadlinerow"><b>${r.date}</b><span>${r.label}</span></div>`).join('') : `<div class="empty compact">${project.start_date ? '裝修前嘅準備工夫都做晒，安心跟進施工同驗收。' : '設定開工日期後，呢度會幫你倒數重要期限。'}</div>`}
       </div>
     </div>
     <div class="card projectsummary">
@@ -622,6 +610,18 @@ function openDeleteProjectModal(project) {
 // ================================================================
 const QUICK_ROOMS = ['客飯廳', '主人房', '細房', '廚房', '浴室'];
 
+// Shared "pick a common room or type your own" picker — used both for the
+// very first room (empty state) and for adding a 2nd+ room. Previously the
+// suggestion chips only existed in the empty state; adding another room fell
+// back to a bare native prompt() with no suggestions at all.
+function roomPickerHtml(existingNames) {
+  const available = QUICK_ROOMS.filter(n => !existingNames.includes(n));
+  return `
+    ${available.length ? `<div class="chiprow">${available.map(n => `<label style="cursor:pointer"><span data-quickroom="${esc(n)}">＋ ${esc(n)}</span></label>`).join('')}</div>` : ''}
+    <label class="f">或自訂房名</label>
+    <div class="rowflex"><input type="text" id="newRoomName" placeholder="例：工人房" style="flex:1"><button class="btn" id="addRoomBtn" style="margin-left:8px">加</button></div>`;
+}
+
 async function renderNeeds() {
   if (!(await guard())) return;
   const project = await resolveProjects();
@@ -639,9 +639,7 @@ async function renderNeeds() {
       <div class="card">
         <h3>先加返間房</h3>
         <p class="dt" style="margin-bottom:10px">揀個常見房間，或者自己打名。</p>
-        <div class="chiprow">${QUICK_ROOMS.map(n => `<label style="cursor:pointer"><span data-quickroom="${esc(n)}">＋ ${esc(n)}</span></label>`).join('')}</div>
-        <label class="f">或自訂房名</label>
-        <div class="rowflex"><input type="text" id="newRoomName" placeholder="例：工人房" style="flex:1"><button class="btn" id="addRoomBtn" style="margin-left:8px">加</button></div>
+        ${roomPickerHtml([])}
       </div>`;
   } else if (state.needsView === 'summary') {
     bodyHtml = renderNeedsSummary(project);
@@ -662,7 +660,11 @@ function renderNeedsWizard(project) {
         ${state.rooms.map(r => `<span class="${r.id === state.activeRoomId ? 'on' : ''}" data-room="${r.id}">${esc(r.name)}</span>`).join('')}
         <span class="add" data-addroom="1">＋</span>
       </div>
-    </div>`;
+    </div>
+    ${state.addRoomFormOpen ? `<div class="card">
+      <div class="rowflex"><h3 style="margin:0">加新房間</h3><button class="iconbtn" id="cancelAddRoom">✕</button></div>
+      ${roomPickerHtml(state.rooms.map(r => r.name))}
+    </div>` : ''}`;
   const topBar = `<div class="rowflex" style="margin-bottom:8px">
       <div></div>
       <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
@@ -786,8 +788,10 @@ function attachNeedsEvents(project) {
     state.activeRoomId = el.dataset.room; state.needsStep = 0; state.needsView = 'wizard'; renderNeeds();
   }));
   appEl.querySelectorAll('[data-addroom]').forEach(el => el.addEventListener('click', () => {
-    const name = prompt('新房間叫咩名？'); if (name && name.trim()) quickAddRoom(project, name.trim());
+    state.addRoomFormOpen = !state.addRoomFormOpen; renderNeeds();
   }));
+  const cancelAddRoomBtn = document.getElementById('cancelAddRoom');
+  if (cancelAddRoomBtn) cancelAddRoomBtn.addEventListener('click', () => { state.addRoomFormOpen = false; renderNeeds(); });
   appEl.querySelectorAll('[data-view]').forEach(el => el.addEventListener('click', () => { state.needsView = el.dataset.view; renderNeeds(); }));
   appEl.querySelectorAll('[data-delroom]').forEach(el => el.addEventListener('click', async () => {
     if (!confirm('刪除呢間房？呢間房嘅問卷答案會一齊刪走。')) return;
@@ -818,6 +822,7 @@ function attachNeedsEvents(project) {
     if (!room) return;
     const answers = Object.assign({}, room.answers || {});
     const step = state.needsStep;
+    const oldLabel = stepBtn.textContent;
     try {
       if (step === 0) {
         answers.usage = document.getElementById('f-usage').value.trim();
@@ -843,11 +848,15 @@ function attachNeedsEvents(project) {
       // optimistic update
       room.answers = answers;
       const savedStep = step;
+      stepBtn.disabled = true; stepBtn.innerHTML = '<span class="spin"></span>';
       await updateRoom(room.id, { answers });
       if (dir === 'save') { toast('已儲存 ✓'); }
       else { state.needsStep = savedStep + (+dir); }
       renderNeeds();
-    } catch (e) { toast(e.message, true); }
+    } catch (e) {
+      toast(e.message, true);
+      stepBtn.disabled = false; stepBtn.textContent = oldLabel;
+    }
   });
 
   appEl.querySelectorAll('[data-stepprev]').forEach(el => el.addEventListener('click', () => {
@@ -861,6 +870,7 @@ async function quickAddRoom(project, name) {
     state.rooms.push(room);
     state.activeRoomId = room.id;
     state.needsStep = 0;
+    state.addRoomFormOpen = false;
     toast(`已加「${name}」`);
     renderNeeds();
   } catch (e) { toast(e.message, true); }
@@ -1472,7 +1482,7 @@ function attachLegalEvents(project, activeTab) {
     const backup = state.legalRecords.slice();
     state.legalRecords = state.legalRecords.filter(r => r.id !== id);
     renderLegal();
-    try { await withTimeout(deleteLegalFinanceRecord(id), 15000, STUCK_SESSION_MSG); toast('已刪除'); }
+    try { await deleteLegalFinanceRecord(id); toast('已刪除'); }
     catch (e) { state.legalRecords = backup; toast(e.message, true); renderLegal(); }
   }));
   const saveBtn = document.getElementById('l-save');
@@ -1499,8 +1509,8 @@ function attachLegalEvents(project, activeTab) {
     }
     try {
       saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spin"></span>';
-      if (state.editingLegalId) await withTimeout(updateLegalFinanceRecord(state.editingLegalId, fields), 15000, STUCK_SESSION_MSG);
-      else await withTimeout(createLegalFinanceRecord(state.user.id, project.id, fields), 15000, STUCK_SESSION_MSG);
+      if (state.editingLegalId) await updateLegalFinanceRecord(state.editingLegalId, fields);
+      else await createLegalFinanceRecord(state.user.id, project.id, fields);
       toast('已儲存');
       state.legalFormOpen = false; state.editingLegalId = null;
       renderLegal();
