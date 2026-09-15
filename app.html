@@ -173,13 +173,21 @@ async function route() {
   const hash = location.hash || '#/login';
   const path = hash.split('?')[0];
   try {
-    if (path === '#/login') return renderLogin();
-    if (path === '#/dashboard') return renderDashboard();
-    if (path === '#/needs') return renderNeeds();
-    if (path === '#/quotes') return renderQuotes();
-    if (path === '#/build') return renderBuild();
-    if (path === '#/legal') return renderLegal();
-    if (path === '#/spending') return renderSpending();
+    // `return renderXxx()` (without await) does NOT let this try/catch see a
+    // LATER rejection from renderXxx — the try block already returned by the
+    // time it rejects, so it becomes a silent unhandled promise rejection:
+    // the page just freezes on stale content with no visible error at all.
+    // Confirmed real (2026-09-14): a signed-URL fetch hitting the stuck
+    // cross-tab session-lock timeout inside #/needs's design view did exactly
+    // this — looked like "uploaded fine, but nothing ever shows". `await`ing
+    // here means any such failure actually reaches the catch below.
+    if (path === '#/login') { await renderLogin(); return; }
+    if (path === '#/dashboard') { await renderDashboard(); return; }
+    if (path === '#/needs') { await renderNeeds(); return; }
+    if (path === '#/quotes') { await renderQuotes(); return; }
+    if (path === '#/build') { await renderBuild(); return; }
+    if (path === '#/legal') { await renderLegal(); return; }
+    if (path === '#/spending') { await renderSpending(); return; }
     location.hash = '#/login';
   } catch (err) {
     console.error('[route] failed:', err);
@@ -696,13 +704,27 @@ function roomTabsBarHtml() {
     </div>` : ''}`;
 }
 
+// Always-visible 3-way switcher for the 規劃 module's sub-views. Previously
+// each view only linked to the OTHER views via small, inconsistent buttons
+// (e.g. 設計＋平面圖 only appeared as one ghost button buried at the top),
+// which made it hard to notice or get back to. Showing all 3 with the
+// current one highlighted, on every view, makes the whole module's
+// structure obvious from anywhere inside it.
+function needsViewTabsHtml() {
+  const tabs = [
+    { key: 'wizard', label: '📋 房間問卷' },
+    { key: 'summary', label: '📄 需求書' },
+    { key: 'design', label: '📐 設計＋平面圖' },
+  ];
+  return `<div class="rowflex" style="gap:6px;margin-bottom:8px">
+    ${tabs.map(t => `<button class="btn sm ${state.needsView === t.key ? '' : 'gh'}" data-view="${t.key}" style="flex:1">${t.label}</button>`).join('')}
+  </div>`;
+}
+
 function renderNeedsWizard(project) {
   const room = state.rooms.find(r => r.id === state.activeRoomId);
   const roomTabsHtml = roomTabsBarHtml();
-  const topBar = `<div class="rowflex" style="margin-bottom:8px">
-      <button class="btn gh sm" data-view="design">📐 設計＋平面圖</button>
-      <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
-    </div>`;
+  const topBar = needsViewTabsHtml();
   if (!room) return topBar + roomTabsHtml;
 
   const step = state.needsStep;
@@ -815,10 +837,7 @@ function renderNeedsSummary(project) {
     });
   });
   return `
-    <div class="rowflex" style="margin-bottom:8px">
-      <button class="btn gh sm" data-view="wizard">← 返回房間問卷</button>
-      <button class="btn gh sm" data-view="design">📐 設計＋平面圖</button>
-    </div>
+    ${needsViewTabsHtml()}
     <div class="card">
       <div class="rowflex"><h3 style="margin:0">📄 需求書</h3>
         <div><button class="btn sm" data-copy="brief">複製</button> <button class="btn gh sm" data-dl="brief">下載 .txt</button></div>
@@ -868,14 +887,17 @@ function measurementSvg(m, w, h) {
 async function renderRoomDesign(project) {
   const room = state.rooms.find(r => r.id === state.activeRoomId);
   const roomTabsHtml = roomTabsBarHtml();
-  const topBar = `<div class="rowflex" style="margin-bottom:8px">
-      <button class="btn gh sm" data-view="wizard">← 返回房間問卷</button>
-      <button class="btn gh sm" data-view="summary">📄 需求書＋掣位清單</button>
-    </div>`;
+  const topBar = needsViewTabsHtml();
   if (!room) return topBar + roomTabsHtml;
 
   const [roomPhotos] = await Promise.all([listRoomPhotos(room.id)]);
-  await Promise.all(roomPhotos.map(async p => { const { data } = await roomPhotoSignedUrl(p.path); p.url = data ? data.signedUrl : ''; }));
+  // One photo's signed-URL fetch failing (or timing out) shouldn't blank the
+  // whole design view — Promise.all with no per-item guard would reject the
+  // entire render on a single bad photo. Degrade that one thumbnail instead.
+  await Promise.all(roomPhotos.map(async p => {
+    try { const { data } = await roomPhotoSignedUrl(p.path); p.url = data ? data.signedUrl : ''; }
+    catch (e) { console.error('[design] roomPhotoSignedUrl failed for', p.id, e); p.url = ''; }
+  }));
   state.roomPhotos = roomPhotos;
 
   const measurements = room.floor_plan_measurements || [];
@@ -883,8 +905,8 @@ async function renderRoomDesign(project) {
   const hasScale = room.floor_plan_scale !== null && room.floor_plan_scale !== undefined;
   let floorPlanUrl = '';
   if (hasFloorPlan) {
-    const { data } = await floorPlanSignedUrl(room.floor_plan_path);
-    floorPlanUrl = data ? data.signedUrl : '';
+    try { const { data } = await floorPlanSignedUrl(room.floor_plan_path); floorPlanUrl = data ? data.signedUrl : ''; }
+    catch (e) { console.error('[design] floorPlanSignedUrl failed', e); floorPlanUrl = ''; }
   }
 
   const floorPlanBody = !hasFloorPlan ? `
