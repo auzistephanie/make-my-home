@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-10（追加）：`CLAUDE.md`／`AGENTS.md`／`CLAUDE_BUILD_SPEC.md` 由 public repo 撤走——加入 `.gitignore`＋`git rm --cached`（只改本機 index，三個檔本機原封不動），push 時由 GitHub 刪走。原因：repo 係 public 兼有 portfolio 連過嚟，`CLAUDE.md` 公開咗 Gmail 同內部筆記。⚠️ 之後三個檔只存本機，**唔會再經 GitHub 喺兩部機之間同步**（同 stephanie-portfolio 做法一樣）；git 歷史入面舊版本仍然睇得到，要徹底清走要改寫歷史（未做）。
+
+
 - 2026-10-10：新增 `README.md`（英文，對象係 recruiter）——public repo 之前冇 README，portfolio 連過嚟淨係見到內部檔。內容：產品一句話＋live link、七大功能表、stack／檔案結構、Decisions worth noting（RLS、spec＋phase 驗收、只計總支出承諾、Supabase 分頁卡死 15 秒 timeout、前端壓相）、Quality checks、Roadmap。冇改 code。未處理：`CLAUDE.md`／`AGENTS.md`／`CLAUDE_BUILD_SPEC.md` 仍然公開（含 email），要另外決定 gitignore＋刪遠端。
 
 

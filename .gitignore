@@ -20,3 +20,8 @@ _to_delete/
 * (2)*
 * (3)*
 *conflicted copy*
+
+# AI 工作指南／內部 spec 只留本機，唔公開（repo 係 public，portfolio 會連過嚟；2026-10-10 加）
+CLAUDE.md
+AGENTS.md
+CLAUDE_BUILD_SPEC.md
