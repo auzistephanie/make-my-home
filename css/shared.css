@@ -388,3 +388,11 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
   .stat-banner .big{font-size:1.3rem}
   .hero-num .n{font-size:1.7rem}
 }
+
+/* 報價表單：工程項目明細行 */
+.lirow{margin-top:6px}
+.lirowline{display:flex;gap:6px;align-items:center}
+.lirowline [data-li-name]{flex:1 1 55%;min-width:0}
+.lirowline [data-li-amount]{flex:0 0 32%;min-width:0}
+.lierr{display:block;font-size:.74rem;min-height:0}
+#q-total[readonly]{background:#F3EEE4;font-weight:700}

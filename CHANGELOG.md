@@ -2,6 +2,8 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-07：額外工程報價計入總支出＋加工程明細。**根因**：額外報價「已簽約」（`status='signed'`）同「揀咗做負責公司」（`flags._responsibility_selected`）係兩個獨立狀態，總數（合約卡 `contractCardHtml`＋總支出頁 `renderSpending`）只認後者，所以 Goldfully $7,500 標咗已簽約都唔計入。改動：①新 `committedExtraQuotes()`：已簽約 OR 已選定都計入；②總支出頁加「額外工程」分項行＋「額外工程明細」逐項列出；③報價表單加「工程項目」明細行（項目＋金額，可加減行），總價改唯讀＝明細合計，明細存 `flags._line_items`（唔改 schema）；④舊報價冇明細→沿用原總價，編輯時提示補明細，補完先自動合計；⑤明細留空／非整數 inline 報錯，唔會當 0。驗證：用 stub 數據喺 localhost 行過（$293,890＋$7,500＋$4,300＝$305,690；改明細 $5,000＋$3,000 後總支出變 $306,190；0 console error）。**未驗證**：真 Supabase 登入＋F5 持久（需 Google 登入）。推送前逐行對比遠端 app.html／shared.css／CHANGELOG.md，確認同本機改動前內容一致（只有本次改動有差異），無衝突。
+
 - 2026-09-13（三度追加）：修「嚟緊期限」卡淨係按開工日倒數、唔理實際進度嘅問題——已簽約嘅用家仲會見到「收齊最少 3 份報價」「揀定公司及核對合約」嘅提醒，明明兩樣都做咗。`dashboardDeadlines()` 加返 `doneFlags`（roomsDone/quotesDone/contractDone，跟現有 routeSteps 完成判斷一致），已完成嘅階段唔會再顯示提醒；全部提醒都完成咗會顯示「準備階段嘅提醒已經冚晒」，唔會再誤導成「未設開工日期」。冇改 database。已用假資料驗證咗簽約後只剩房間需求提醒、同全部完成後嘅空狀態文案，0 console error。
 
 - 2026-09-13（再追加）：揀公司報價比較大類金額加返「訂造傢俬」獨立一項（`BREAKDOWN_CATS` 新增 `furniture`），原本淨係「木工」一項冚晒訂造傢俬同一般木工，兩者報價通常唔同水平，分開先啱比較。`breakdown` 係 jsonb，純加欄位，冇改 schema、冇影響現有報價資料。375px 驗證咗新增報價表單同大類金額對比表都正確顯示，0 console error。

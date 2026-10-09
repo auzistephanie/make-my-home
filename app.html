@@ -1352,14 +1352,27 @@ async function renderQuotes() {
   attachQuotesEvents(project, contract);
 }
 
+// 額外報價「已確認」＝標記已簽約，或者喺漏項責任度揀咗做負責公司。
+// （以前只認後者，所以單純標「已簽約」嘅額外報價唔會計入總數。）
+function committedExtraQuotes(contract, otherQuotes) {
+  const selectedIds = new Set(responsibilityPlan(contract, otherQuotes)
+    .filter(item => item.status === 'external' && item.selectedQuote)
+    .map(item => item.selectedQuote.id));
+  return otherQuotes.filter(q => q.status === 'signed' || selectedIds.has(q.id));
+}
+
+// 工程明細存喺 flags._line_items（[{name, amount}]）；舊報價冇呢個 key → null。
+function quoteLineItems(q) {
+  const items = q && q.flags && q.flags._line_items;
+  return Array.isArray(items) ? items : null;
+}
+
 function contractCardHtml(contract, otherQuotes) {
   const scope = (contract.flags && contract.flags._contract_scope) || {};
   const gaps = contractGaps(contract);
   const responsibility = responsibilityPlan(contract, otherQuotes);
   const hasUnassignedExternal = responsibility.some(item => item.status === 'external' && !item.ready);
-  const selectedExtraQuotes = responsibility
-    .filter(item => item.status === 'external' && item.selectedQuote)
-    .map(item => item.selectedQuote);
+  const selectedExtraQuotes = committedExtraQuotes(contract, otherQuotes);
   const selectedExtraTotal = selectedExtraQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
   const confirmedTotal = (+contract.total || 0) + selectedExtraTotal;
   const candidateCount = otherQuotes.length - selectedExtraQuotes.length;
@@ -1372,7 +1385,7 @@ function contractCardHtml(contract, otherQuotes) {
       const status = CONTRACT_SCOPE_STATUS[scope[item.key]] || CONTRACT_SCOPE_STATUS.check;
       return `<div><span>${item.label}</span><i class="pill ${status.cls}">${status.label}</i></div>`;
     }).join('')}</div></details>
-    <div class="combinedtotal">目前已確認預算：主合約 ${money(contract.total)}${selectedExtraQuotes.length ? ` ＋ 已選額外工程 ${money(selectedExtraTotal)}` : ''} ＝ <b>${money(confirmedTotal)}</b>${candidateCount ? `<br><small>${candidateCount} 份未獲選候選報價不計入</small>` : ''}</div>
+    <div class="combinedtotal">目前已確認預算：主合約 ${money(contract.total)}${selectedExtraQuotes.length ? ` ＋ 已確認額外工程 ${money(selectedExtraTotal)}` : ''} ＝ <b>${money(confirmedTotal)}</b>${candidateCount ? `<br><small>${candidateCount} 份未簽約／未獲選候選報價不計入</small>` : ''}</div>
     <div class="mtop"><button class="btn sm gh" data-editcontract="${contract.id}">編輯合約</button>${hasUnassignedExternal ? ' <button class="btn sm" id="addMissingQuoteBtn">為未落實項目加入報價</button>' : ''}</div>
   </div>`;
 }
@@ -1453,8 +1466,31 @@ function compareTableHtml(quotes) {
   </table></div></div>`;
 }
 
+function quoteItemRowHtml(it) {
+  return `<div class="lirow"><div class="lirowline"><input type="text" data-li-name placeholder="項目（例：睡房訂造櫃）" value="${esc(it.name || '')}"><input type="text" inputmode="numeric" data-li-amount placeholder="金額" value="${it.amount === '' || it.amount === null || it.amount === undefined ? '' : esc(String(it.amount))}"><button type="button" class="iconbtn" data-li-del aria-label="刪除此項">🗑️</button></div><small class="lierr" style="color:var(--danger)"></small></div>`;
+}
+
+// 收集＋驗證明細；回傳 { items, total, ok }。留空／非數字一律 inline 報錯，唔會當 0。
+function collectQuoteItems(untouchedOk) {
+  const rows = [...appEl.querySelectorAll('#q-items .lirow')];
+  const raw = rows.map(r => ({ row: r, name: r.querySelector('[data-li-name]').value.trim(), amount: r.querySelector('[data-li-amount]').value.trim().replace(/,/g, '') }));
+  rows.forEach(r => { r.querySelector('.lierr').textContent = ''; });
+  if (untouchedOk && raw.every(r => !r.name && !r.amount)) return { items: null, ok: true };
+  let ok = true; const items = [];
+  raw.forEach(r => {
+    const err = r.row.querySelector('.lierr');
+    if (!r.name) { err.textContent = '請填項目名稱（或刪除此行）'; ok = false; return; }
+    if (!r.amount) { err.textContent = '請填金額，唔可以留空'; ok = false; return; }
+    if (!/^\d+$/.test(r.amount)) { err.textContent = '金額要係整數數字（唔好加符號或文字）'; ok = false; return; }
+    items.push({ name: r.name, amount: +r.amount });
+  });
+  return { items, ok, total: items.reduce((a, b) => a + b.amount, 0) };
+}
+
 function quoteFormHtml(editing, missingScopes) {
   const q = editing || { breakdown: {}, flags: {} };
+  const items = quoteLineItems(q);
+  const legacy = !!editing && !items;
   const breakdownInputs = BREAKDOWN_CATS.map(c => `
     <div><label class="f">${c.label}</label><input type="number" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
   const flagChecks = FLAGS.map(f => `
@@ -1464,8 +1500,12 @@ function quoteFormHtml(editing, missingScopes) {
     ${missingScopes.length ? `<label class="f">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${((q.flags && q.flags._quote_for) || state.prefillQuoteScope) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
     <label class="f">公司名稱</label>
     <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
-    <label class="f">總價（$）</label>
-    <input type="number" id="q-total" value="${q.total || ''}" min="0">
+    <label class="f">工程項目（總價 = 明細合計）</label>
+    ${legacy ? '<div class="note" id="q-legacy-note">呢份舊報價未有工程明細，總價暫時沿用原有金額。請補返項目同金額；補完之後總價會自動等於明細合計。</div>' : ''}
+    <div id="q-items">${(items && items.length ? items : [{ name: '', amount: '' }]).map(it => quoteItemRowHtml(it)).join('')}</div>
+    <button type="button" class="btn sm gh" id="q-additem">＋ 加項目</button>
+    <label class="f">總價（$）— 自動計算，唔使輸入</label>
+    <input type="text" id="q-total" readonly value="${q.total || ''}" placeholder="$0">
     <label class="f">大類金額</label>
     <div class="grid2">${breakdownInputs}</div>
     <label class="f">十條紅旗（剔咗代表呢間公司有呢個問題；⚠ 係重點扣分項）</label>
@@ -1547,6 +1587,27 @@ function attachQuotesEvents(project, contract) {
     catch (e) { toast('打開檔案失敗：' + e.message, true); }
   }));
 
+  const itemsBox = document.getElementById('q-items');
+  if (itemsBox) {
+    const refreshTotal = () => {
+      const sum = [...itemsBox.querySelectorAll('[data-li-amount]')].reduce((a, el) => { const v = el.value.trim().replace(/,/g, ''); return /^\d+$/.test(v) ? a + +v : a; }, 0);
+      const anyEntered = [...itemsBox.querySelectorAll('[data-li-amount],[data-li-name]')].some(el => el.value.trim());
+      const cur = state.quotes.find(q => q.id === state.editingQuoteId);
+      document.getElementById('q-total').value = (!anyEntered && cur && !quoteLineItems(cur)) ? (cur.total || '') : sum;
+    };
+    itemsBox.addEventListener('input', (ev) => { const e = ev.target.closest('.lirow'); if (e) e.querySelector('.lierr').textContent = ''; refreshTotal(); });
+    itemsBox.addEventListener('click', (ev) => {
+      if (!ev.target.closest('[data-li-del]')) return;
+      ev.target.closest('.lirow').remove();
+      if (!itemsBox.querySelector('.lirow')) itemsBox.insertAdjacentHTML('beforeend', quoteItemRowHtml({}));
+      refreshTotal();
+    });
+    document.getElementById('q-additem').addEventListener('click', () => {
+      itemsBox.insertAdjacentHTML('beforeend', quoteItemRowHtml({}));
+      itemsBox.querySelector('.lirow:last-child [data-li-name]').focus();
+    });
+  }
+
   const saveBtn = document.getElementById('q-save');
   if (saveBtn) saveBtn.addEventListener('click', async () => {
     const company = document.getElementById('q-company').value.trim();
@@ -1558,7 +1619,12 @@ function attachQuotesEvents(project, contract) {
     appEl.querySelectorAll('[data-flag]').forEach(el => { flags[el.dataset.flag] = el.checked; });
     const quoteFor = document.getElementById('q-quote-for');
     if (quoteFor) flags._quote_for = quoteFor.value || null;
-    const total = +document.getElementById('q-total').value || null;
+    const legacyEdit = !!current && !quoteLineItems(current);
+    const li = collectQuoteItems(legacyEdit);
+    if (!li.ok) { toast('工程明細有錯，請睇紅色提示', true); return; }
+    let total;
+    if (li.items) { flags._line_items = li.items; total = li.total; }
+    else total = current.total || null;   // 舊報價未補明細：沿用原有總價
     const score = computeQuoteScore(flags);
     const fields = { company, total, breakdown, flags, score };
     const fileInput = document.getElementById('q-file');
@@ -1878,14 +1944,12 @@ async function renderSpending() {
 
   const contract = quotes.find(q => q.status === 'signed' && q.flags && q.flags._kind === 'contract');
   const otherQuotes = quotes.filter(q => q !== contract);
-  let renoCommitted, renoNote;
+  let renoCommitted, renoNote, extraQuotes = [], extraTotal = 0;
   if (contract) {
-    const responsibility = responsibilityPlan(contract, otherQuotes);
-    const selectedExtraTotal = responsibility
-      .filter(item => item.status === 'external' && item.selectedQuote)
-      .reduce((sum, item) => sum + (+item.selectedQuote.total || 0), 0);
-    renoCommitted = (+contract.total || 0) + selectedExtraTotal;
-    renoNote = '已簽主合約' + (selectedExtraTotal ? ' ＋ 已選定額外工程' : '');
+    extraQuotes = committedExtraQuotes(contract, otherQuotes);
+    extraTotal = extraQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
+    renoCommitted = +contract.total || 0;
+    renoNote = '已簽主合約';
   } else {
     const signedQuotes = quotes.filter(q => q.status === 'signed');
     renoCommitted = signedQuotes.reduce((sum, q) => sum + (+q.total || 0), 0);
@@ -1900,6 +1964,7 @@ async function renderSpending() {
 
   const rows = [
     { label: '裝修工程', note: renoNote, amount: renoCommitted },
+    { label: '額外工程', note: `${extraQuotes.length} 項已簽約／已選定`, amount: extraTotal },
     { label: '律師', note: `${lawyerRecords.length} 項已落實／完成`, amount: lawyerCommitted },
     { label: '按揭手續', note: `${mortgageRecords.length} 項已落實／完成 · 淨雜費（已扣現金回贈）`, amount: mortgageCommitted },
   ];
@@ -1907,11 +1972,15 @@ async function renderSpending() {
 
   const body = `
     <div class="hero-num"><div class="n">${money(grandTotal)}</div><div class="l">已落實總支出承諾</div></div>
-    <div class="note">呢個數只計「已落實」嘅金額——已簽合約、已選定嘅額外工程報價，同埋法律財務入面狀態係「已落實」或「完成」嘅記錄。報價中／未落實嘅候選金額唔會計入；想睇返逐項，去「揀公司」或「法律財務」對照。</div>
+    <div class="note">呢個數只計「已落實」嘅金額——已簽合約、已簽約或已選定嘅額外工程報價，同埋法律財務入面狀態係「已落實」或「完成」嘅記錄。報價中／未落實嘅候選金額唔會計入；想睇返逐項，去「揀公司」或「法律財務」對照。</div>
     <div class="card">
       <h3>按 module 分項</h3>
       ${rows.map(r => `<div class="deadlinerow"><b>${money(r.amount)}</b><span>${esc(r.label)} · ${esc(r.note)}</span></div>`).join('')}
-    </div>`;
+    </div>
+    ${extraQuotes.length ? `<div class="card"><h3>額外工程明細</h3>${extraQuotes.map(q => {
+      const items = quoteLineItems(q);
+      return `<div class="deadlinerow"><b>${money(q.total)}</b><span>${esc(q.company)}</span></div>${items ? items.map(it => `<div class="deadlinerow" style="padding-left:14px"><b>${money(it.amount)}</b><span>${esc(it.name)}</span></div>`).join('') : '<div class="deadlinerow" style="padding-left:14px"><span style="color:var(--muted)">未有明細（舊報價，只有總價）</span></div>'}`;
+    }).join('')}</div>` : ''}`;
   appEl.innerHTML = chromeShell('spending', body, projectRowHtml());
   attachChromeEvents();
 }
