@@ -396,3 +396,11 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
 .lirowline [data-li-amount]{flex:0 0 32%;min-width:0}
 .lierr{display:block;font-size:.74rem;min-height:0}
 #q-total[readonly]{background:#F3EEE4;font-weight:700}
+
+/* 總支出：額外工程明細（公司＝標題，明細＝縮入清單） */
+.xgroup{margin-top:12px}
+.xgroup+.xgroup{padding-top:12px;border-top:1px solid #E6DECF}
+.xhead{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;font-weight:700;color:var(--ink)}
+.xhead b{color:var(--green)}
+.xitem{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0 12px;padding-left:10px;border-left:2px solid #D9CFBB;font-size:.78rem;color:var(--ink2)}
+.xitem.muted{color:var(--muted)}
