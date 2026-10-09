@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-10：新增 `README.md`（英文，對象係 recruiter）——public repo 之前冇 README，portfolio 連過嚟淨係見到內部檔。內容：產品一句話＋live link、七大功能表、stack／檔案結構、Decisions worth noting（RLS、spec＋phase 驗收、只計總支出承諾、Supabase 分頁卡死 15 秒 timeout、前端壓相）、Quality checks、Roadmap。冇改 code。未處理：`CLAUDE.md`／`AGENTS.md`／`CLAUDE_BUILD_SPEC.md` 仍然公開（含 email），要另外決定 gitignore＋刪遠端。
+
+
 - 2026-10-09：總支出頁「額外工程明細」改版——之前公司同佢嘅明細項用同一款方格，只得一項明細時睇落似兩個獨立項目；而家公司係粗體標題（右邊係合計），明細縮入＋左邊線＋較細字，一眼分到層次。純排版，冇改數據／計算。
 
 - 2026-10-07：額外工程報價計入總支出＋加工程明細。**根因**：額外報價「已簽約」（`status='signed'`）同「揀咗做負責公司」（`flags._responsibility_selected`）係兩個獨立狀態，總數（合約卡 `contractCardHtml`＋總支出頁 `renderSpending`）只認後者，所以 Goldfully $7,500 標咗已簽約都唔計入。改動：①新 `committedExtraQuotes()`：已簽約 OR 已選定都計入；②總支出頁加「額外工程」分項行＋「額外工程明細」逐項列出；③報價表單加「工程項目」明細行（項目＋金額，可加減行），總價改唯讀＝明細合計，明細存 `flags._line_items`（唔改 schema）；④舊報價冇明細→沿用原總價，編輯時提示補明細，補完先自動合計；⑤明細留空／非整數 inline 報錯，唔會當 0。驗證：用 stub 數據喺 localhost 行過（$293,890＋$7,500＋$4,300＝$305,690；改明細 $5,000＋$3,000 後總支出變 $306,190；0 console error）。**未驗證**：真 Supabase 登入＋F5 持久（需 Google 登入）。推送前逐行對比遠端 app.html／shared.css／CHANGELOG.md，確認同本機改動前內容一致（只有本次改動有差異），無衝突。
