@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（追加）：**RLS 收緊——子表寫入要擁有 parent**（`supabase/migrations/007_rls_parent_ownership.sql`，已 apply 落 production，migration 名 `reno_rls_parent_ownership`）。6 個子表（rooms／quotes／stages／legal_finance_records → projects；photos → stages；room_photos → rooms）嘅 insert＋update policy 加 `exists(parent.user_id = auth.uid())`，update 加明確 `with check` 防止將行搬去人哋 parent 下面；select／delete 冇改。做法：①先核實現有資料 0 行 child／parent 擁有者唔一致；②喺 DO block 入面 apply 新 policy＋測試再 rollback（綵排）；③正式 apply；④再測一次。結果：B 將 6 種子表掛入 A 嘅 parent 全部 42501 拒絕；A 喺自己 project 新增 6 種資料、改 quote／stages／legal／room_photos 全部正常；A 將 room 搬去唔屬於自己嘅 project 被拒；12 條 policy 有 parent 檢查；0 殘留。**未驗證**：真 browser 登入用 app 新增／編輯（需 Google 登入）——DB 層模擬已涵蓋 app 用到嘅 insert／update 路徑。
+
+
 - 2026-10-11：**RLS 隔離測試（spec §8 DoD）**——冇用第二個 Google 戶口，改喺 production DB 用 DO block 模擬三個身份（A＝真用家、B＝假 uuid、anon），以 `set local role`＋`request.jwt.claims` 切換，最後 `raise exception` 自動 rollback（事後核實 0 殘留）。結果：①7 個 `reno_*` 表 RLS 全開、各 4 條 policy；②B 讀／改／刪 A 嘅資料全部 0 行，storage 讀 A folder 0；③B 冒認 A 新增 project／quote、上載入 A folder 全部 42501 拒絕；④A 將自己 project 轉畀 B 被拒（UPDATE 冇 with check 時沿用 using）；⑤anon 讀全部 0、新增被拒；REST API 用 publishable key 未登入讀 7 個表＋storage list 全部 `[]`。**已知漏洞（確認存在）**：B 用自己 user_id 可以將 room／quote／photo／room_photo 掛入 A 嘅 project／stage／room（policy 冇檢查 parent 擁有者）；A 睇唔到呢啲行、B 亦讀唔到 A 任何嘢，所以冇資料外洩，但係會有垃圾行掛喺 A 名下（A 刪 project 時會 cascade 清走）。修法：insert/update policy 加 `exists(select 1 from parent where id=… and user_id=auth.uid())`——未做。另：security advisor 對 `reno_*` 冇警告。
 
 
