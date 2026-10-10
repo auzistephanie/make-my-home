@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11：**RLS 隔離測試（spec §8 DoD）**——冇用第二個 Google 戶口，改喺 production DB 用 DO block 模擬三個身份（A＝真用家、B＝假 uuid、anon），以 `set local role`＋`request.jwt.claims` 切換，最後 `raise exception` 自動 rollback（事後核實 0 殘留）。結果：①7 個 `reno_*` 表 RLS 全開、各 4 條 policy；②B 讀／改／刪 A 嘅資料全部 0 行，storage 讀 A folder 0；③B 冒認 A 新增 project／quote、上載入 A folder 全部 42501 拒絕；④A 將自己 project 轉畀 B 被拒（UPDATE 冇 with check 時沿用 using）；⑤anon 讀全部 0、新增被拒；REST API 用 publishable key 未登入讀 7 個表＋storage list 全部 `[]`。**已知漏洞（確認存在）**：B 用自己 user_id 可以將 room／quote／photo／room_photo 掛入 A 嘅 project／stage／room（policy 冇檢查 parent 擁有者）；A 睇唔到呢啲行、B 亦讀唔到 A 任何嘢，所以冇資料外洩，但係會有垃圾行掛喺 A 名下（A 刪 project 時會 cascade 清走）。修法：insert/update policy 加 `exists(select 1 from parent where id=… and user_id=auth.uid())`——未做。另：security advisor 對 `reno_*` 冇警告。
+
+
 - 2026-10-11：README 加 3 張截圖（`docs/screenshots/` dashboard／quotes／spending，375px @2x）。全部用假資料：喺 scratchpad 複製 app，用 in-memory stub 取代 supabase-js（冇連真 DB、冇登入），Playwright 影相，0 page error。冇改 app code。
 
 
