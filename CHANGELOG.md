@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11：README 加 3 張截圖（`docs/screenshots/` dashboard／quotes／spending，375px @2x）。全部用假資料：喺 scratchpad 複製 app，用 in-memory stub 取代 supabase-js（冇連真 DB、冇登入），Playwright 影相，0 page error。冇改 app code。
+
+
 - 2026-10-10（追加）：`CLAUDE.md`／`AGENTS.md`／`CLAUDE_BUILD_SPEC.md` 由 public repo 撤走——加入 `.gitignore`＋`git rm --cached`（只改本機 index，三個檔本機原封不動），push 時由 GitHub 刪走。原因：repo 係 public 兼有 portfolio 連過嚟，`CLAUDE.md` 公開咗 Gmail 同內部筆記。⚠️ 之後三個檔只存本機，**唔會再經 GitHub 喺兩部機之間同步**（同 stephanie-portfolio 做法一樣）；git 歷史入面舊版本仍然睇得到，要徹底清走要改寫歷史（未做）。
 
 

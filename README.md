@@ -5,6 +5,23 @@ Cantonese UI · live at **[make-my-home-xi.vercel.app](https://make-my-home-xi.v
 
 I built this after my own first renovation. The hard part wasn't the building work. It was not knowing what to ask, what a fair quote looks like, and what to check before signing off each stage. MakeMyHome walks a first-timer through the whole journey: planning, choosing a contractor, building, and the legal and money side.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/dashboard.png" width="240" alt="Dashboard: the next most important step and progress through the renovation route"></td>
+    <td align="center"><img src="docs/screenshots/quotes.png" width="240" alt="Quote comparison: three contractors scored with red flags highlighted"></td>
+    <td align="center"><img src="docs/screenshots/spending.png" width="240" alt="Total spend: committed costs broken down by module"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Today</b> — what to do next, and where you are on the route</sub></td>
+    <td align="center"><sub><b>Choosing a contractor</b> — quotes scored, red flags called out</sub></td>
+    <td align="center"><sub><b>Total spend</b> — every committed cost in one view</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots use demo data, not a real household's records.</sub>
+
 ## What it does
 
 | Area | What the user gets |
