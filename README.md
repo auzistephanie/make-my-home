@@ -38,12 +38,12 @@ Sign-in is Google only. Calculators and guides stay public; anything that saves 
 
 ## How it's built
 
-- **Front end:** single-page vanilla JavaScript, no framework or build step (`app.html`, `landing.html`, `js/`, `css/shared.css`)
+- **Front end:** single-page vanilla JavaScript, no framework or build step (`app.html`, `index.html`, `js/`, `css/shared.css`)
 - **Back end:** Supabase (Postgres, Auth with Google OAuth, Storage)
 - **Hosting:** Vercel
 
 ```
-landing.html     public landing page and calculators
+index.html       public landing page and calculators
 app.html         signed-in app (hash-routed tabs)
 js/supabase.js   client setup (publishable key only)
 js/auth.js       Google sign-in and session guard

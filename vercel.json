@@ -2,20 +2,14 @@
   "cleanUrls": true,
   "redirects": [
     {
-      "source": "/index",
+      "source": "/landing",
       "destination": "/",
       "permanent": false
     },
     {
-      "source": "/index.html",
+      "source": "/landing.html",
       "destination": "/",
       "permanent": false
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/landing.html"
     }
   ]
 }
