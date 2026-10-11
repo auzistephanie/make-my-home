@@ -104,7 +104,9 @@ function legalFormHtml(editing, category) {
 // multi-tier (低息 first 2-3 years, then a different rate), so this is only
 // an estimate, not what the bank will actually charge.
 function computeMortgagePayment(loanAmount, annualRatePct, years) {
-  if (!loanAmount || !annualRatePct || !years) return null;
+  // 利率 0% 係合法（只係 monthlyRate === 0 → 平均分期），所以淨係 null／undefined 先當「未填」；
+  // 之前 `!annualRatePct` 令 0% 被當成未填，計算靜靜哋放棄、格仔留住上一組舊數字。
+  if (!loanAmount || annualRatePct === null || annualRatePct === undefined || !years) return null;
   const monthlyRate = annualRatePct / 100 / 12;
   const n = Math.round(years * 12);
   if (n <= 0) return null;
@@ -142,31 +144,45 @@ function wireMortgageAutoCalc() {
   interestEl.addEventListener('input', () => { interestTouched = true; });
   rebateEl.addEventListener('input', () => { rebateTouched = true; });
 
+  // 自動計算出嚟嘅格仔：未改過（或者撳咗「重新自動計算」）先會寫入。算唔到（輸入未齊／有錯）
+  // 就清走，而唔係留住上一組舊數字——舊數字同而家輸入對唔上，會誤導用家。
+  function setAuto(el, touched, force, value) {
+    if (force || !touched) el.value = (value === null || value === undefined) ? '' : value;
+  }
   function apply(force) {
-    // 1. 物業總值 + 首期% → 貸款額（only once both are explicitly filled in）
-    if (priceEl.value !== '' && downPctEl.value !== '' && (force || !loanTouched)) {
-      loanEl.value = Math.round((+priceEl.value || 0) * (1 - (+downPctEl.value || 0) / 100));
+    // 先驗證輸入。錯就喺欄位下面顯示原因；空白唔算錯（只係未填）。
+    const price = readNumber(priceEl, LIMITS.price);
+    const downPct = readNumber(downPctEl, LIMITS.downPct);
+    const rate = readNumber(rateEl, LIMITS.ratePct);
+    const years = readNumber(yearsEl, LIMITS.years);
+    const rebatePct = readNumber(rebatePctEl, LIMITS.rebatePct);
+
+    // 1. 物業總值 + 首期% → 貸款額（兩樣都填咗而且冇錯先計）
+    const canLoan = price && downPct && price.value !== null && downPct.value !== null;
+    setAuto(loanEl, loanTouched, force, canLoan ? Math.round(price.value * (1 - downPct.value / 100)) : null);
+    const loan = readNumber(loanEl, LIMITS.loan);
+    if (loan && loan.value && price && price.value && loan.value > price.value) {
+      setFieldError(loanEl, '貸款額唔可以大過樓價');
     }
-    const loan = +loanEl.value || 0;
-    const rate = +rateEl.value || 0;
-    const years = +yearsEl.value || 0;
+    const loanV = loan && loan.value ? loan.value : 0;
 
     // 2. 貸款額 + 利率 + 年期 → 每月供款／累計已付利息（interest derived from
     //    whatever monthly is actually showing, so the pair never mismatches）
-    const result = computeMortgagePayment(loan, rate, years);
+    const canPay = loanV > 0 && rate && rate.value !== null && years && years.value !== null;
+    const result = canPay ? computeMortgagePayment(loanV, rate.value, years.value) : null;
+    setAuto(monthlyEl, monthlyTouched, force, result ? result.monthly : null);
     if (result) {
-      if (force || !monthlyTouched) monthlyEl.value = result.monthly;
-      if (force || !interestTouched) {
-        const n = Math.round(years * 12);
-        const effectiveMonthly = +monthlyEl.value || result.monthly;
-        interestEl.value = n > 0 ? Math.round(effectiveMonthly * n - loan) : result.totalInterest;
-      }
+      const n = Math.round(years.value * 12);
+      const effectiveMonthly = +monthlyEl.value || result.monthly;
+      // 利率 0% 一定係 $0 利息；唔好用「四捨五入咗嘅月供 × 期數 − 本金」計，會有幾蚊誤差
+      setAuto(interestEl, interestTouched, force, rate.value === 0 ? 0 : (n > 0 ? Math.round(effectiveMonthly * n - loanV) : result.totalInterest));
+    } else {
+      setAuto(interestEl, interestTouched, force, null);
     }
 
     // 3. 貸款額 + 回贈% → 現金回贈（$）
-    if (loan && rebatePctEl.value !== '' && (force || !rebateTouched)) {
-      rebateEl.value = Math.round(loan * (+rebatePctEl.value || 0) / 100);
-    }
+    const canRebate = loanV > 0 && rebatePct && rebatePct.value !== null;
+    setAuto(rebateEl, rebateTouched, force, canRebate ? Math.round(loanV * rebatePct.value / 100) : null);
   }
   [priceEl, downPctEl, loanEl, rateEl, yearsEl, rebatePctEl].forEach(el => el.addEventListener('input', () => apply(false)));
   if (recalcBtn) recalcBtn.addEventListener('click', () => {
@@ -176,6 +192,7 @@ function wireMortgageAutoCalc() {
 }
 
 function attachLegalEvents(project, activeTab) {
+  appEl.querySelectorAll('input[type=number]').forEach(el => el.addEventListener('input', () => clearFieldError(el)));
   appEl.querySelectorAll('[data-legaltab]').forEach(el => el.addEventListener('click', () => {
     state.legalTab = el.dataset.legaltab; state.legalFormOpen = false; state.editingLegalId = null; renderLegal();
   }));
@@ -198,26 +215,42 @@ function attachLegalEvents(project, activeTab) {
   }));
   const saveBtn = document.getElementById('l-save');
   if (saveBtn) saveBtn.addEventListener('click', async () => {
+    // 儲存前逐個欄位驗證；有錯就喺欄位下面顯示原因、focus 第一個錯嘅欄位，唔儲存。
+    // 0 對呢三個欄位係有意義嘅數值（0% 首期／利率／回贈），其餘金額 0 當未填（null）。
+    const zeroOk = new Set(['down_payment_pct', 'interest_rate', 'cash_rebate_pct']);
     const fields = {
       category: activeTab,
       contact_name: document.getElementById('l-contact').value.trim() || null,
       status: document.getElementById('l-status').value,
       notes: document.getElementById('l-notes').value.trim() || null,
     };
-    if (activeTab === 'mortgage') {
-      fields.property_price = +document.getElementById('l-price').value || null;
-      fields.down_payment_pct = document.getElementById('l-downpct').value !== '' ? +document.getElementById('l-downpct').value : null;
-      fields.loan_amount = +document.getElementById('l-loan').value || null;
-      fields.interest_rate = document.getElementById('l-rate').value !== '' ? +document.getElementById('l-rate').value : null;
-      fields.loan_years = +document.getElementById('l-years').value || null;
-      fields.monthly_payment = +document.getElementById('l-monthly').value || null;
-      fields.total_interest_paid = +document.getElementById('l-interestpaid').value || null;
-      fields.cash_rebate_pct = document.getElementById('l-rebatepct').value !== '' ? +document.getElementById('l-rebatepct').value : null;
-      fields.cash_rebate = +document.getElementById('l-rebate').value || null;
-      fields.total_fee = +document.getElementById('l-fee').value || null;
-    } else {
-      fields.quote_amount = +document.getElementById('l-quote').value || null;
+    const specs = activeTab === 'mortgage' ? [
+      ['l-price', LIMITS.price, 'property_price'],
+      ['l-downpct', LIMITS.downPct, 'down_payment_pct'],
+      ['l-loan', LIMITS.loan, 'loan_amount'],
+      ['l-rate', LIMITS.ratePct, 'interest_rate'],
+      ['l-years', LIMITS.years, 'loan_years'],
+      ['l-monthly', { ...LIMITS.money, label: '每月供款' }, 'monthly_payment'],
+      ['l-interestpaid', { ...LIMITS.money, label: '累計已付利息' }, 'total_interest_paid'],
+      ['l-rebatepct', LIMITS.rebatePct, 'cash_rebate_pct'],
+      ['l-rebate', { ...LIMITS.money, label: '現金回贈' }, 'cash_rebate'],
+      ['l-fee', { ...LIMITS.money, label: '手續費總額' }, 'total_fee'],
+    ] : [
+      ['l-quote', { ...LIMITS.money, label: '報價' }, 'quote_amount'],
+    ];
+    let firstBad = null;
+    specs.forEach(([id, lim, key]) => {
+      const el = document.getElementById(id);
+      const r = readNumber(el, lim);
+      if (!r) { if (!firstBad) firstBad = el; return; }
+      fields[key] = (r.value === null || (r.value === 0 && !zeroOk.has(key))) ? null : r.value;
+    });
+    if (activeTab === 'mortgage' && fields.loan_amount && fields.property_price && fields.loan_amount > fields.property_price) {
+      const loanEl = document.getElementById('l-loan');
+      setFieldError(loanEl, '貸款額唔可以大過樓價');
+      if (!firstBad) firstBad = loanEl;
     }
+    if (firstBad) { firstBad.focus(); return; }
     try {
       saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spin"></span>';
       if (state.editingLegalId) await updateLegalFinanceRecord(state.editingLegalId, fields);

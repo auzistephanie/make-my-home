@@ -16,6 +16,7 @@
 <script src="js/db.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/content.js"></script>
+<script src="js/validate.js"></script>
 <script src="js/spending.js"></script>
 <script src="js/legal.js"></script>
 <script src="js/build.js"></script>
@@ -123,8 +124,10 @@ function consumeLandingPayload() {
   const fields = { name: '由計算器建立嘅 project' };
   if (FLAT_TYPES.some(t => t.value === data.flat_type)) fields.flat_type = data.flat_type;
   if (SCOPES.some(t => t.value === data.scope)) fields.scope = data.scope;
-  if (Number(data.size_sqft) > 0) fields.size_sqft = Math.round(Number(data.size_sqft));
-  if (Number(data.budget_cap) > 0) fields.budget_cap = Math.round(Number(data.budget_cap));
+  const szCheck = checkNumber(data.size_sqft, LIMITS.size);
+  if (szCheck.ok && szCheck.value) fields.size_sqft = szCheck.value;
+  const bgCheck = checkNumber(data.budget_cap, LIMITS.budget);
+  if (bgCheck.ok && bgCheck.value > 0) fields.budget_cap = bgCheck.value;
   if (typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date)) fields.start_date = data.start_date;
   return fields;
 }
@@ -492,14 +495,19 @@ function renderOnboarding() {
   }));
   const back = document.getElementById('obBack');
   if (back) back.addEventListener('click', () => { state.onboardingStep--; renderOnboarding(); });
+  const obSizeInput = document.getElementById('obSize');
+  if (obSizeInput) obSizeInput.addEventListener('input', () => clearFieldError(obSizeInput));
   document.getElementById('obNext').addEventListener('click', async () => {
     if (step === 0) { state.onboardingStep = 1; return renderOnboarding(); }
     if (step === 1) {
       data.name = document.getElementById('obName').value.trim();
-      data.size_sqft = +document.getElementById('obSize').value || 450;
       data.scope = document.getElementById('obScope').value;
       data.start_date = document.getElementById('obDate').value || null;
       if (!data.name) { toast('請幫個 project 改名', true); return; }
+      const obSizeEl = document.getElementById('obSize');
+      const obSizeRes = readNumber(obSizeEl, LIMITS.size, { required: true });
+      if (!obSizeRes) { obSizeEl.focus(); return; }
+      data.size_sqft = obSizeRes.value;
       state.onboardingStep = 2; return renderOnboarding();
     }
     if (!data.goals.length) { toast('請揀最少一項', true); return; }
@@ -552,14 +560,21 @@ function renderNewProjectForm(isFirst, editing) {
     appEl.innerHTML = chromeShell('dashboard', body, state.projects.length ? projectRowHtml() : '');
     attachChromeEvents();
   }
+  const npSizeEl = document.getElementById('npSize');
+  const npBudgetEl = document.getElementById('npBudget');
+  [npSizeEl, npBudgetEl].forEach(el => el.addEventListener('input', () => clearFieldError(el)));
   document.getElementById('npSave').addEventListener('click', async () => {
+    // 兩個都驗證晒先 return，等用家一次見到所有錯誤
+    const sizeRes = readNumber(npSizeEl, LIMITS.size, { required: true });
+    const budgetRes = readNumber(npBudgetEl, LIMITS.budget);
+    if (!sizeRes || !budgetRes) { (!sizeRes ? npSizeEl : npBudgetEl).focus(); return; }
     const fields = {
       name: document.getElementById('npName').value.trim() || '未命名 project',
       flat_type: document.getElementById('npType').value,
-      size_sqft: +document.getElementById('npSize').value || null,
+      size_sqft: sizeRes.value,
       scope: document.getElementById('npScope').value,
       start_date: document.getElementById('npDate').value || null,
-      budget_cap: +document.getElementById('npBudget').value || null,
+      budget_cap: budgetRes.value || null,   // 留空或 0 ＝ 未設預算
     };
     try {
       if (editing) {

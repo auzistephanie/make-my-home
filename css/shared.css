@@ -404,3 +404,8 @@ table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:
 .xhead b{color:var(--green)}
 .xitem{display:flex;justify-content:space-between;gap:8px;margin:6px 0 0 12px;padding-left:10px;border-left:2px solid #D9CFBB;font-size:.78rem;color:var(--ink2)}
 .xitem.muted{color:var(--muted)}
+
+/* 數值驗證（js/validate.js）：欄位下面嘅持久錯誤提示 */
+.field-err{color:var(--danger);font-size:.8rem;margin:4px 2px 0;line-height:1.4}
+.is-invalid{border-color:var(--danger)!important;background:var(--danger-soft)}
+.is-invalid:focus{outline-color:var(--danger);box-shadow:0 0 0 2px rgba(168,64,47,.25)}

@@ -246,6 +246,7 @@
 </main>
 
 <script src="js/content.js"></script>
+<script src="js/validate.js"></script>
 <script>
 /* ============================================================
    landing.html — 免登入靜態內容 + 兩個互動計算器。
@@ -269,7 +270,10 @@ function saveToProject() {
 function fmtD(d) { return (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
 document.getElementById('t-go').addEventListener('click', () => {
   const type = document.getElementById('t-type').value;
-  const size = +document.getElementById('t-size').value || 450;
+  const sizeEl = document.getElementById('t-size');
+  const sizeRes = readNumber(sizeEl, LIMITS.size, { required: true });
+  if (!sizeRes) { document.getElementById('t-result').style.display = 'none'; sizeEl.focus(); return; }  // 唔好留住上一次嘅結果
+  const size = sizeRes.value;
   const scope = document.getElementById('t-scope').value;
   const dateVal = document.getElementById('t-date').value;
   const f = scheduleFactor(type, size, scope);
@@ -324,7 +328,10 @@ document.getElementById('t-save').addEventListener('click', saveToProject);
 // ---------- 預算計算（照抄 index.html 邏輯；GRADES 係 landing 專屬，唔搬入 content.js）----------
 const GRADES = { basic: [600, 900], mid: [900, 1400], high: [1500, 2200] };
 document.getElementById('b-go').addEventListener('click', () => {
-  const size = +document.getElementById('b-size').value || 450;
+  const sizeEl = document.getElementById('b-size');
+  const sizeRes = readNumber(sizeEl, LIMITS.size, { required: true });
+  if (!sizeRes) { document.getElementById('b-result').style.display = 'none'; sizeEl.focus(); return; }
+  const size = sizeRes.value;
   const g = GRADES[document.getElementById('b-grade').value];
   const lo = size * g[0], hi = size * g[1];
   const f = n => n >= 10000 ? '$' + (n / 10000).toFixed(0) + '萬' : '$' + n.toLocaleString();
@@ -338,6 +345,9 @@ document.getElementById('b-go').addEventListener('click', () => {
   document.getElementById('b-result').scrollIntoView({ behavior: 'smooth' });
 });
 document.getElementById('b-save').addEventListener('click', saveToProject);
+
+// 改咗面積就即刻清走錯誤提示
+['t-size', 'b-size'].forEach(id => document.getElementById(id).addEventListener('input', e => clearFieldError(e.target)));
 
 document.getElementById('cta-save').addEventListener('click', saveToProject);
 
