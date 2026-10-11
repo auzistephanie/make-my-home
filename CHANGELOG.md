@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（再追加）：**拆細 `app.html`——第二個 module「法律財務」**搬去 `js/legal.js`（9 個宣告：`LAWYER_STATUS`／`MORTGAGE_STATUS`／`LEGAL_TABS`／`renderLegal`／`legalCardHtml`／`legalFormHtml`／`computeMortgagePayment`／`wireMortgageAutoCalc`／`attachLegalEvents`，逐字搬）。`app.html` 2,087 → 1,861 行（累計 −285）；`<script src>` 放喺 `spending.js` 後面。事前確認：9 個宣告之中只有 `renderLegal` 被 app.html 其他地方用（router），其餘只喺段內用。驗證（比「總支出」嚴格，因為有互動）：①`node --check`；②用同一份假資料分別渲染搬之前（備份）同搬之後，跑同一套 13 步腳本——兩個 tab 列表、按揭新增表單、自動計算（600 萬樓價＋30% 首期 → 貸款 420 萬／月供 $18,860／回贈 $63,000）、儲存、編輯、新增律師、取消、刪除（confirm 已 accept）、跳去總支出再返嚟——每一步 `#app` HTML＋toast 逐字相同，兩邊 0 page error。**未驗證**：真 Google 登入後喺 production 實際新增／刪除一條記錄（需 Google 戶口；stub 唔經真 RLS）。**剩低未拆**：dashboard／onboarding／needs／quotes／build。quotes 同 build 共用 `committedExtraQuotes`／`quoteLineItems`，要最後連埋一齊處理。
+
+
 - 2026-10-11（再追加）：**拆細 `app.html`——第一個試驗 module「總支出」**搬去新檔 `js/spending.js`（`renderSpending`＋`SPENDING_COMMITTED_STATUS`，原封不動逐字搬）。`app.html` 2,146 → 2,087 行；用普通 `<script src>`（同 `db.js`／`photos.js` 一樣共用全域，唔用 ES module，所以冇改 build／部署），放喺 `content.js` 後面。揀呢個 module 因為依賴最少：只有 router 一處叫用，其餘全部係已有嘅全域函數。驗證：①`node --check` 兩邊語法；②用同一份假資料（stub supabase）分別渲染搬之前（git 備份）同搬之後兩個版本，未簽約／已簽約兩個情境嘅 `#app` HTML 逐字相同（1,479／1,731 字元）、0 page error；③路由來回（dashboard→spending→quotes→spending）輸出一致。**未驗證**：真 Google 登入後喺 production 開「總支出」（需 Google 戶口）。**剩低未拆**：dashboard／onboarding／needs／quotes／legal／build 等；下一個建議 `legal`（`renderLegal`＋`LEGAL_TABS`，同 spending 一樣獨立）。注意 quotes 同 spending／build 共用 `committedExtraQuotes`／`quoteLineItems`，拆 quotes 時要一齊考慮。
 
 
