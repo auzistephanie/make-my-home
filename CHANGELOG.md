@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（再追加）：**拆細 `app.html`——第一個試驗 module「總支出」**搬去新檔 `js/spending.js`（`renderSpending`＋`SPENDING_COMMITTED_STATUS`，原封不動逐字搬）。`app.html` 2,146 → 2,087 行；用普通 `<script src>`（同 `db.js`／`photos.js` 一樣共用全域，唔用 ES module，所以冇改 build／部署），放喺 `content.js` 後面。揀呢個 module 因為依賴最少：只有 router 一處叫用，其餘全部係已有嘅全域函數。驗證：①`node --check` 兩邊語法；②用同一份假資料（stub supabase）分別渲染搬之前（git 備份）同搬之後兩個版本，未簽約／已簽約兩個情境嘅 `#app` HTML 逐字相同（1,479／1,731 字元）、0 page error；③路由來回（dashboard→spending→quotes→spending）輸出一致。**未驗證**：真 Google 登入後喺 production 開「總支出」（需 Google 戶口）。**剩低未拆**：dashboard／onboarding／needs／quotes／legal／build 等；下一個建議 `legal`（`renderLegal`＋`LEGAL_TABS`，同 spending 一樣獨立）。注意 quotes 同 spending／build 共用 `committedExtraQuotes`／`quoteLineItems`，拆 quotes 時要一齊考慮。
+
+
 - 2026-10-11（再追加）：**鎖死 supabase-js 版本**——`app.html` 由 `@supabase/supabase-js@2`（每次載入都攞最新 2.x，當時解析去 2.117.3，只係 4 日前先出）改做 `@2.116.0`（最新一個出咗 30 日以上嘅 2.x）。原因：library 一更新就可能無聲無息整壞登入／DB，同呢個 project 嘅 Navigator Locks 問題（見上面注意事項）一樣屬於「唔係自己改 code 都壞」嘅風險。localhost 實測：library 載入、登入頁正常、auth／from／storage 用到嘅 9 個 API 全部存在、未登入 query `reno_projects` 回 200＋空陣列（RLS 生效）、0 console error。**未驗證**：真 Google 登入＋F5 持久（需 Google 戶口）——升級版本時要再手動行一次。升級方法：改 `app.html` 第 8 行版本號，揀出咗 ≥2 星期嘅 2.x，上面行 `getSession`／一個 CRUD 先 push。
 
 

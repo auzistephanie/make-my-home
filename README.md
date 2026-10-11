@@ -49,6 +49,7 @@ js/supabase.js   client setup (publishable key only)
 js/auth.js       Google sign-in and session guard
 js/db.js         all database reads and writes, each with a timeout
 js/photos.js     in-browser compression (≤300KB, max 1600px) and upload
+js/spending.js   the Total spend tab (first module split out of app.html)
 supabase/migrations/   schema, row-level security, storage policies
 ```
 
