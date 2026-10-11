@@ -1,6 +1,21 @@
 {
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/index",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/landing.html" }
+    {
+      "source": "/",
+      "destination": "/landing.html"
+    }
   ]
 }

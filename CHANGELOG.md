@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（再追加）：**修首頁——`/` 一直出舊嘅靜態 `index.html`，唔係 `landing.html`**。以用家身份（手機尺寸）試成個 app 嗰陣發現：live 首頁 0 個 `<a>`、冇「免費開始」、冇入口去 app；`/landing` 先係新 landing。**根因**：Vercel 對 `/` 優先出檔案系統入面嘅 `index.html`，`vercel.json` 嘅 `rewrites: / → /landing.html` 永遠唔會觸發（rewrite 淨係喺冇對應檔案時先生效）。**更正**：Phase 5 嗰條 smoke test（見上面「`/` 200＋title … root rewrite 生效」）係誤判——舊 `index.html` 同 `landing.html` 嘅 title 都係「裝修無伏 — 香港裝修新手指南」開頭，淨睇 title 分唔出邊個，所以 root rewrite 其實由頭到尾冇生效過。教訓：驗證 routing 要比對內容（md5／特有元素），唔好淨睇 title／status。**改動**：①`index.html` → `legacy-static.html`（保留唔刪；內容已被 landing 取代，js/content.js 註解入面「抄自 index.html」指嘅就係佢）＋加 `<meta name="robots" content="noindex">` 避免同首頁重複被索引；②`vercel.json` 加 `/index`、`/index.html` → `/` 嘅 redirect（舊書籤唔會 404）；rewrite 保持不變，而家冇 `index.html` 擋住就生效。影響：portfolio 同 README 連去嘅首頁而家係有「免費開始」＋計算器＋銜接 app 嘅 landing。
+
+
 - 2026-10-11（再追加）：**拆細 `app.html`——第三個 module「施工」**搬去 `js/build.js`（`renderBuild`／`stageCardHtml`／`attachBuildEvents`，逐字搬）。`app.html` 1,861 → 1,709 行（由拆分前 2,146 累計 −437）；`<script src>` 放喺 `legal.js` 後面。事前確認：只有 `renderBuild` 被 router 用；段內冇頂層副作用；依賴全部係已有全域（`handoffStatus` 留喺 app.html，因為同報價頁共用）。驗證：①`node --check`；②同一份假資料分別渲染搬之前（備份）同搬之後，跑同一套 12 步腳本——未簽約／已簽約兩個初始畫面、開工日期儲存、「完成早過開工」同「冇開工就填完成」兩條驗證被拒（toast 一致）、完成／驗收日期儲存、驗收 checklist 剔 2 項、備註 800ms 自動儲存、一次上載 2 張相（stub storage，路徑時間戳已正規化）、刪 1 張、離開再返嚟狀態保留（checklist 2/6、第一個工序「完成及驗收 ✓」）——每一步 `#app` HTML＋toast 逐字相同，兩邊 0 page error。**未驗證**：真 Google 登入後喺 production 實際上載相（真 canvas 壓縮＋真 Storage RLS 路徑；stub 唔經呢兩樣）。**剩低未拆**：dashboard／onboarding／needs（含設計＋平面圖）／quotes。`committedExtraQuotes`／`quoteLineItems`／`handoffStatus` 喺 quotes 區，拆 quotes 時連埋處理；dashboard 同 quotes 之間亦有互相引用，要先睇清楚。
 
 
