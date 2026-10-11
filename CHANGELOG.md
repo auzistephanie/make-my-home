@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（再追加）：**拆細 `app.html`——第三個 module「施工」**搬去 `js/build.js`（`renderBuild`／`stageCardHtml`／`attachBuildEvents`，逐字搬）。`app.html` 1,861 → 1,709 行（由拆分前 2,146 累計 −437）；`<script src>` 放喺 `legal.js` 後面。事前確認：只有 `renderBuild` 被 router 用；段內冇頂層副作用；依賴全部係已有全域（`handoffStatus` 留喺 app.html，因為同報價頁共用）。驗證：①`node --check`；②同一份假資料分別渲染搬之前（備份）同搬之後，跑同一套 12 步腳本——未簽約／已簽約兩個初始畫面、開工日期儲存、「完成早過開工」同「冇開工就填完成」兩條驗證被拒（toast 一致）、完成／驗收日期儲存、驗收 checklist 剔 2 項、備註 800ms 自動儲存、一次上載 2 張相（stub storage，路徑時間戳已正規化）、刪 1 張、離開再返嚟狀態保留（checklist 2/6、第一個工序「完成及驗收 ✓」）——每一步 `#app` HTML＋toast 逐字相同，兩邊 0 page error。**未驗證**：真 Google 登入後喺 production 實際上載相（真 canvas 壓縮＋真 Storage RLS 路徑；stub 唔經呢兩樣）。**剩低未拆**：dashboard／onboarding／needs（含設計＋平面圖）／quotes。`committedExtraQuotes`／`quoteLineItems`／`handoffStatus` 喺 quotes 區，拆 quotes 時連埋處理；dashboard 同 quotes 之間亦有互相引用，要先睇清楚。
+
+
 - 2026-10-11（再追加）：**拆細 `app.html`——第二個 module「法律財務」**搬去 `js/legal.js`（9 個宣告：`LAWYER_STATUS`／`MORTGAGE_STATUS`／`LEGAL_TABS`／`renderLegal`／`legalCardHtml`／`legalFormHtml`／`computeMortgagePayment`／`wireMortgageAutoCalc`／`attachLegalEvents`，逐字搬）。`app.html` 2,087 → 1,861 行（累計 −285）；`<script src>` 放喺 `spending.js` 後面。事前確認：9 個宣告之中只有 `renderLegal` 被 app.html 其他地方用（router），其餘只喺段內用。驗證（比「總支出」嚴格，因為有互動）：①`node --check`；②用同一份假資料分別渲染搬之前（備份）同搬之後，跑同一套 13 步腳本——兩個 tab 列表、按揭新增表單、自動計算（600 萬樓價＋30% 首期 → 貸款 420 萬／月供 $18,860／回贈 $63,000）、儲存、編輯、新增律師、取消、刪除（confirm 已 accept）、跳去總支出再返嚟——每一步 `#app` HTML＋toast 逐字相同，兩邊 0 page error。**未驗證**：真 Google 登入後喺 production 實際新增／刪除一條記錄（需 Google 戶口；stub 唔經真 RLS）。**剩低未拆**：dashboard／onboarding／needs／quotes／build。quotes 同 build 共用 `committedExtraQuotes`／`quoteLineItems`，要最後連埋一齊處理。
 
 
