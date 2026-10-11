@@ -61,38 +61,38 @@ function legalFormHtml(editing, category) {
   const statusSelect = `<select id="l-status">${statusOptions.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
   return `
     <h3>${editing ? '編輯記錄' : `新增${isMortgage ? '按揭' : '律師'}記錄`}</h3>
-    <label class="f">聯絡人／公司名</label>
+    <label class="f" for="l-contact">聯絡人／公司名</label>
     <input type="text" id="l-contact" value="${esc(r.contact_name || '')}" placeholder="${isMortgage ? '例：滙豐銀行' : '例：陳大文律師行'}">
     ${isMortgage ? `
-    <label class="f">狀態</label>
+    <label class="f" for="l-status">狀態</label>
     ${statusSelect}
     <div class="grid2">
-      <div><label class="f">物業總值／樓價（$）</label><input type="number" id="l-price" value="${r.property_price || ''}" min="0"></div>
-      <div><label class="f">首期（%）</label><input type="number" id="l-downpct" value="${r.down_payment_pct ?? ''}" min="0" max="100" step="0.1"></div>
+      <div><label class="f" for="l-price">物業總值／樓價（$）</label><input type="number" id="l-price" value="${r.property_price || ''}" min="0"></div>
+      <div><label class="f" for="l-downpct">首期（%）</label><input type="number" id="l-downpct" value="${r.down_payment_pct ?? ''}" min="0" max="100" step="0.1"></div>
     </div>
     <div class="grid2">
-      <div><label class="f">貸款額（$）</label><input type="number" id="l-loan" value="${r.loan_amount || ''}" min="0"></div>
-      <div><label class="f">利率（%）</label><input type="number" id="l-rate" value="${r.interest_rate ?? ''}" min="0" step="0.01"></div>
+      <div><label class="f" for="l-loan">貸款額（$）</label><input type="number" id="l-loan" value="${r.loan_amount || ''}" min="0"></div>
+      <div><label class="f" for="l-rate">利率（%）</label><input type="number" id="l-rate" value="${r.interest_rate ?? ''}" min="0" step="0.01"></div>
     </div>
-    <label class="f">年期（年）</label>
+    <label class="f" for="l-years">年期（年）</label>
     <input type="number" id="l-years" value="${r.loan_years || ''}" min="1" max="50">
     <p class="dt">填晒物業總值／首期會自動幫你計貸款額；貸款額、利率、年期填晒又會自動計每月供款同總利息（用固定利率算，僅供參考——銀行實際首兩年利率同之後通常唔同）。以上欄位你都可以自己覆蓋，覆蓋咗就唔會再自動更新，撳「重新自動計算」可以攞返建議值。</p>
     <div class="grid2">
-      <div><label class="f">每月供款（$）</label><input type="number" id="l-monthly" value="${r.monthly_payment || ''}" min="0"></div>
-      <div><label class="f">累計已付利息（$）</label><input type="number" id="l-interestpaid" value="${r.total_interest_paid || ''}" min="0"></div>
+      <div><label class="f" for="l-monthly">每月供款（$）</label><input type="number" id="l-monthly" value="${r.monthly_payment || ''}" min="0"></div>
+      <div><label class="f" for="l-interestpaid">累計已付利息（$）</label><input type="number" id="l-interestpaid" value="${r.total_interest_paid || ''}" min="0"></div>
     </div>
     <div class="grid2">
-      <div><label class="f">現金回贈（%，可選）</label><input type="number" id="l-rebatepct" value="${r.cash_rebate_pct ?? ''}" min="0" step="0.1"></div>
-      <div><label class="f">現金回贈（$）</label><input type="number" id="l-rebate" value="${r.cash_rebate || ''}" min="0"></div>
+      <div><label class="f" for="l-rebatepct">現金回贈（%，可選）</label><input type="number" id="l-rebatepct" value="${r.cash_rebate_pct ?? ''}" min="0" step="0.1"></div>
+      <div><label class="f" for="l-rebate">現金回贈（$）</label><input type="number" id="l-rebate" value="${r.cash_rebate || ''}" min="0"></div>
     </div>
     <button type="button" class="btn sm gh" id="l-recalc">🔄 重新自動計算</button>
-    <label class="f">累計雜費（$）</label>
+    <label class="f" for="l-fee">累計雜費（$）</label>
     <input type="number" id="l-fee" value="${r.total_fee || ''}" min="0">` : `
     <div class="grid2">
-      <div><label class="f">狀態</label>${statusSelect}</div>
-      <div><label class="f">報價（$）</label><input type="number" id="l-quote" value="${r.quote_amount || ''}" min="0"></div>
+      <div><label class="f" for="l-status">狀態</label>${statusSelect}</div>
+      <div><label class="f" for="l-quote">報價（$）</label><input type="number" id="l-quote" value="${r.quote_amount || ''}" min="0"></div>
     </div>`}
-    <label class="f">備註</label>
+    <label class="f" for="l-notes">備註</label>
     <textarea id="l-notes">${esc(r.notes || '')}</textarea>
     <div class="mtop">
       <button class="btn" id="l-save">${editing ? '儲存' : '加入'}</button>

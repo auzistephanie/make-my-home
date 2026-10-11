@@ -60,7 +60,7 @@ input[type=text],input[type=number],input[type=date],select,textarea{
   font-size:.88rem;background:#FFFDF9;color:var(--ink);
 }
 textarea{resize:vertical;min-height:70px}
-label.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:10px 0 3px}
+label.f,div.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:10px 0 3px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:480px){.grid2{grid-template-columns:1fr}}
 
@@ -77,9 +77,10 @@ label.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:
 .counter button{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--accent);background:#fff;color:var(--accent);font-size:1.05rem;cursor:pointer;flex:0 0 auto}
 .counter .hint{font-size:.74rem;color:var(--muted);flex:1 1 140px}
 .chiprow{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
-.chiprow label{display:flex;align-items:center;gap:4px;background:#F1EADB;border-radius:999px;padding:5px 12px;font-size:.78rem;color:var(--ink2);cursor:pointer}
+.chiprow label,.chiprow button.chipbtn{display:flex;align-items:center;gap:4px;background:#F1EADB;border-radius:999px;padding:5px 12px;font-size:.78rem;color:var(--ink2);cursor:pointer}
+.chiprow button.chipbtn{border:none;font-family:inherit;line-height:inherit}
 .chiprow input{width:auto}
-.chiprow span.on{color:var(--green);font-weight:700}
+.chiprow span.on,.chiprow .chipbtn.on{color:var(--green);font-weight:700}
 
 /* ---------- tables ---------- */
 .tbwrap{
@@ -193,6 +194,7 @@ table.tb.cmp td:first-child{background:#fff}
 .chk li:last-child{border-bottom:none}
 .chk li b{display:block}
 .chk li small{display:block;color:var(--ink2);font-size:.76rem;font-weight:400}
+.chk li label{flex:1;cursor:pointer}   /* 撳成行文字都可以剔（原本 li 已有 cursor:pointer，但冇做到） */
 .chk input{width:auto;margin-top:3px}
 
 /* ---------- delete-project confirm modal ---------- */

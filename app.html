@@ -226,7 +226,7 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
   return `
     <div class="apphead">
       <button class="lg" data-nav="#/dashboard">裝修無伏<small>MAKEMYHOME</small></button>
-      <button class="avatar" id="avatarBtn" title="登出">${esc((state.user && state.user.email || 'S')[0].toUpperCase())}</button>
+      <button class="avatar" id="avatarBtn" title="登出" aria-label="登出">${esc((state.user && state.user.email || 'S')[0].toUpperCase())}</button>
     </div>
     ${projRowHtml || ''}
     <div class="body">${bodyHtml}</div>
@@ -238,7 +238,7 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
 function projectRowHtml() {
   const opts = state.projects.map(p => `<option value="${p.id}" ${p.id === state.currentProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   return `<div class="projrow">🏠 Project：
-    <select id="projSelect">${opts}<option value="__new__">＋ 開新 project</option></select>
+    <select id="projSelect" aria-label="切換 project">${opts}<option value="__new__">＋ 開新 project</option></select>
   </div>`;
 }
 function attachChromeEvents() {
@@ -479,10 +479,10 @@ function renderOnboarding() {
   } else if (step === 1) {
     content = `<div class="eyebrow">你嘅單位</div><h1>先幫你砌好時間同預算框架</h1><p class="onboardlede">只問影響最大嘅資料，其餘可以之後慢慢補。</p>
       <div class="grid2 onboardform">
-        <div><label class="f">Project 名稱</label><input id="obName" value="${esc(data.name || '')}" placeholder="例：太古城新屋"></div>
-        <div><label class="f">實用面積（呎）</label><input type="number" id="obSize" value="${data.size_sqft || 450}" min="100" max="3000"></div>
-        <div><label class="f">工程範圍</label><select id="obScope">${SCOPES.map(s => `<option value="${s.value}" ${data.scope === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
-        <div><label class="f">預計開工日期</label><input type="date" id="obDate" value="${data.start_date || ''}"></div>
+        <div><label class="f" for="obName">Project 名稱</label><input type="text" id="obName" value="${esc(data.name || '')}" placeholder="例：太古城新屋"></div>
+        <div><label class="f" for="obSize">實用面積（呎）</label><input type="number" id="obSize" value="${data.size_sqft || 450}" min="100" max="3000"></div>
+        <div><label class="f" for="obScope">工程範圍</label><select id="obScope">${SCOPES.map(s => `<option value="${s.value}" ${data.scope === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+        <div><label class="f" for="obDate">預計開工日期</label><input type="date" id="obDate" value="${data.start_date || ''}"></div>
       </div><p class="dt">之後可以喺 Project 設定修改。</p>`;
   } else {
     content = `<div class="eyebrow">最想解決嘅事</div><h1>今次最需要我幫你睇實邊幾樣？</h1><p class="onboardlede">可以揀多過一項；首頁會優先顯示相關提醒。</p>
@@ -540,15 +540,15 @@ function renderNewProjectForm(isFirst, editing) {
   const body = `
     <div class="card">
       <h3>${editing ? '編輯 project' : (isFirst ? '開始你嘅第一個裝修計劃' : '開新 project')}</h3>
-      <label class="f">Project 名稱</label>
+      <label class="f" for="npName">Project 名稱</label>
       <input type="text" id="npName" placeholder="例：太古城 480呎" value="${esc(p.name || '')}">
       <div class="grid2">
-        <div><label class="f">樓型</label><select id="npType">${flatOpts}</select></div>
-        <div><label class="f">實用面積（呎）</label><input type="number" id="npSize" value="${p.size_sqft || 450}" min="100" max="3000"></div>
-        <div><label class="f">工程範圍</label><select id="npScope">${scopeOpts}</select></div>
-        <div><label class="f">預計開工日期</label><input type="date" id="npDate" value="${p.start_date || ''}"></div>
+        <div><label class="f" for="npType">樓型</label><select id="npType">${flatOpts}</select></div>
+        <div><label class="f" for="npSize">實用面積（呎）</label><input type="number" id="npSize" value="${p.size_sqft || 450}" min="100" max="3000"></div>
+        <div><label class="f" for="npScope">工程範圍</label><select id="npScope">${scopeOpts}</select></div>
+        <div><label class="f" for="npDate">預計開工日期</label><input type="date" id="npDate" value="${p.start_date || ''}"></div>
       </div>
-      <label class="f">預算上限（$，可留空）</label>
+      <label class="f" for="npBudget">預算上限（$，可留空）</label>
       <input type="number" id="npBudget" value="${p.budget_cap || ''}" min="0">
       <div class="mtop">
         <button class="btn" id="npSave">${editing ? '儲存' : '建立 project'}</button>
@@ -608,7 +608,7 @@ function openDeleteProjectModal(project) {
     <div class="modalcard">
       <h3>刪除 project</h3>
       <p>刪除「<b>${esc(project.name)}</b>」會連埋房間、報價、施工記錄、相片同法律財務記錄一齊刪走，<b>唔可以復原</b>。</p>
-      <label class="f">要刪除，請打返個 project 名稱確認：</label>
+      <label class="f" for="delConfirmInput">要刪除，請打返個 project 名稱確認：</label>
       <input type="text" id="delConfirmInput" placeholder="${esc(project.name)}" autocomplete="off">
       <div class="mtop">
         <button class="btn danger" id="delConfirmBtn" disabled>確認刪除</button>
@@ -671,8 +671,8 @@ const ROOM_FURNITURE_SUGGESTIONS = {
 function roomPickerHtml(existingNames) {
   const available = QUICK_ROOMS.filter(n => !existingNames.includes(n));
   return `
-    ${available.length ? `<div class="chiprow">${available.map(n => `<label style="cursor:pointer"><span data-quickroom="${esc(n)}">＋ ${esc(n)}</span></label>`).join('')}</div>` : ''}
-    <label class="f">或自訂房名</label>
+    ${available.length ? `<div class="chiprow">${available.map(n => `<button type="button" class="chipbtn" data-quickroom="${esc(n)}">＋ ${esc(n)}</button>`).join('')}</div>` : ''}
+    <label class="f" for="newRoomName">或自訂房名</label>
     <div class="rowflex"><input type="text" id="newRoomName" placeholder="例：工人房" style="flex:1"><button class="btn" id="addRoomBtn" style="margin-left:8px">加</button></div>`;
 }
 
@@ -758,26 +758,26 @@ function renderNeedsWizard(project) {
     const currentFurniture = (a.furniture || '').split(/[,，、]/).map(s => s.trim()).filter(Boolean);
     stepBody = `
       <h3>${esc(room.name)} · 第 1 步：用途＋大嚿傢俬 🛋️</h3>
-      <label class="f">呢間房主要用途</label>
+      <label class="f" for="f-usage">呢間房主要用途</label>
       <input type="text" id="f-usage" placeholder="例：睡眠＋工作枱" value="${esc(a.usage || usageSuggestion || '')}">
       ${usageSuggestion && !a.usage ? `<p class="dt">已經幫你填低「${esc(room.name)}」常見用途，唔啱可以自己改。</p>` : ''}
-      <label class="f">已有／要留返嘅大型傢俬</label>
+      <label class="f" for="f-furniture">已有／要留返嘅大型傢俬</label>
       <input type="text" id="f-furniture" placeholder="例：衣櫃、床架、書枱" value="${esc(a.furniture || '')}">
-      ${furnitureSuggestions.length ? `<div class="chiprow">${furnitureSuggestions.map(f => `<label style="cursor:pointer"><span data-furnituretag="${esc(f)}" class="${currentFurniture.includes(f) ? 'on' : ''}">${currentFurniture.includes(f) ? '✓' : '＋'} ${esc(f)}</span></label>`).join('')}</div>` : ''}`;
+      ${furnitureSuggestions.length ? `<div class="chiprow">${furnitureSuggestions.map(f => `<button type="button" data-furnituretag="${esc(f)}" class="chipbtn ${currentFurniture.includes(f) ? 'on' : ''}" aria-pressed="${currentFurniture.includes(f)}">${currentFurniture.includes(f) ? '✓' : '＋'} ${esc(f)}</button>`).join('')}</div>` : ''}`;
   } else if (step === 1) {
     const storage = a.storage || {};
     const level = storage.level || 'med';
     stepBody = `
       <h3>${esc(room.name)} · 第 2 步：儲物量 📦</h3>
-      <label class="f">儲物需求</label>
+      <label class="f" for="f-level">儲物需求</label>
       <select id="f-level">
         <option value="low" ${level==='low'?'selected':''}>少</option>
         <option value="med" ${level==='med'?'selected':''}>中</option>
         <option value="high" ${level==='high'?'selected':''}>多</option>
       </select>
-      <label class="f">需要邊種收納？</label>
-      <div class="chiprow">${STORAGE_TYPE_OPTIONS.map(t => `<label><input type="checkbox" data-storagetype="${esc(t)}" ${(storage.types||[]).includes(t) ? 'checked' : ''}> ${esc(t)}</label>`).join('')}</div>
-      <label class="f">其他收納要求</label>
+      <div class="f" id="storagetypes-label">需要邊種收納？</div>
+      <div class="chiprow" role="group" aria-labelledby="storagetypes-label">${STORAGE_TYPE_OPTIONS.map(t => `<label><input type="checkbox" data-storagetype="${esc(t)}" ${(storage.types||[]).includes(t) ? 'checked' : ''}> ${esc(t)}</label>`).join('')}</div>
+      <label class="f" for="f-storagenote">其他收納要求</label>
       <input type="text" id="f-storagenote" placeholder="例：要放吸塵機同熨衫板" value="${esc(storage.note || '')}">`;
   } else if (step === 2) {
     const sockets = a.sockets || {};
@@ -785,26 +785,26 @@ function renderNeedsWizard(project) {
     stepBody = `
       <h3>${esc(room.name)} · 第 3 步：電掣＋插座＋網絡位 🔌</h3>
       ${socketTypes.map(t => `
-        <label class="f">${t.label}</label>
-        <div class="counter">
-          <button data-ctr="${t.key}" data-delta="-1">−</button>
+        <div class="f" id="ctrlabel-${t.key}">${t.label}</div>
+        <div class="counter" role="group" aria-labelledby="ctrlabel-${t.key}">
+          <button data-ctr="${t.key}" data-delta="-1" aria-label="減少${t.label}數量">−</button>
           <b id="ctr-${t.key}">${sockets[t.key] || 0}</b>
-          <button data-ctr="${t.key}" data-delta="1">＋</button>
+          <button data-ctr="${t.key}" data-delta="1" aria-label="增加${t.label}數量">＋</button>
           <span class="hint">${t.hint}</span>
         </div>`).join('')}
-      <label class="f">呢間房仲有咩特別電器？</label>
+      <label class="f" for="f-extra">呢間房仲有咩特別電器？</label>
       <input type="text" id="f-extra" placeholder="例：抽濕機、風扇燈、電熱氈…" value="${esc(sockets.extra || '')}">`;
   } else {
     const lighting = a.lighting || {};
     stepBody = `
       <h3>${esc(room.name)} · 第 4 步：燈光 💡</h3>
-      <label class="f">主燈開關</label>
+      <label class="f" for="f-mainswitch">主燈開關</label>
       <select id="f-mainswitch">
         <option value="single" ${lighting.main_switch!=='double'?'selected':''}>單控（一個位開關）</option>
         <option value="double" ${lighting.main_switch==='double'?'selected':''}>雙控（房門＋床頭都有開關）</option>
       </select>
       <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.85rem"><input type="checkbox" id="f-dimmer" style="width:auto" ${lighting.dimmer?'checked':''}> 需要調光／情景燈掣</label>
-      <label class="f">特別燈光需求</label>
+      <label class="f" for="f-lightnotes">特別燈光需求</label>
       <textarea id="f-lightnotes" placeholder="例：床頭閱讀燈、層板灯槽、廚房工作枱燈">${esc(lighting.notes || '')}</textarea>`;
   }
 
@@ -951,7 +951,7 @@ async function renderRoomDesign(project) {
     <div class="card" style="margin-top:10px">
       <div style="font-size:.98rem;font-weight:700;margin-bottom:6px">校準比例尺</div>
       <p class="dt">你啱啱畫嗰條線，實際長度係幾多米？之後畫嘅線就會自動計出尺寸。</p>
-      <label class="f">實際長度（米）</label>
+      <label class="f" for="calibrationMeters">實際長度（米）</label>
       <input type="number" id="calibrationMeters" min="0" step="0.01" placeholder="例：3.2">
       <div class="mtop">
         <button class="btn sm" id="confirmCalibration">確認校準</button>
@@ -972,8 +972,8 @@ async function renderRoomDesign(project) {
       ${state.roomPhotos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delroomphoto="${p.id}:${esc(p.path)}">×</button></div>`).join('')}
       <div class="ph add" data-addroomphoto>＋</div>
     </div>
-    <input type="file" accept="image/*" multiple id="roomPhotoInput" style="display:none">
-    <input type="file" accept="image/*" id="floorPlanInput" style="display:none">`;
+    <input type="file" accept="image/*" multiple id="roomPhotoInput" aria-label="上載設計參考相" style="display:none">
+    <input type="file" accept="image/*" id="floorPlanInput" aria-label="上載平面圖" style="display:none">`;
 
   return `
     ${topBar}
@@ -1038,6 +1038,7 @@ function attachNeedsEvents(project) {
     input.value = current.join('、');
     const nowOn = current.includes(tag);
     el.classList.toggle('on', nowOn);
+    el.setAttribute('aria-pressed', nowOn);
     el.textContent = (nowOn ? '✓ ' : '＋ ') + tag;
   }));
 
@@ -1461,21 +1462,21 @@ function contractFormHtml(editing, project) {
   const q = editing || { flags: {} };
   const flags = q.flags || {};
   const scope = flags._contract_scope || {};
-  const scopeRows = CONTRACT_SCOPES.map(item => `<div class="contractscoperow"><b>${item.label}</b><select data-contract-scope="${item.key}">
+  const scopeRows = CONTRACT_SCOPES.map(item => `<div class="contractscoperow"><b>${item.label}</b><select data-contract-scope="${item.key}" aria-label="${item.label}">
     <option value="included" ${scope[item.key] === 'included' ? 'selected' : ''}>已包括</option>
     <option value="external" ${scope[item.key] === 'external' ? 'selected' : ''}>不包括，要另行報價</option>
     <option value="check" ${!scope[item.key] || scope[item.key] === 'check' ? 'selected' : ''}>唔確定，要問清楚</option>
   </select></div>`).join('');
   return `<h3>${editing ? '編輯已簽合約' : '加入已簽合約'}</h3>
     <div class="grid2">
-      <div><label class="f">裝修公司</label><input type="text" id="c-company" value="${esc(q.company || '')}" placeholder="例：安居工程"></div>
-      <div><label class="f">合約總額（$）</label><input type="number" id="c-total" value="${q.total || ''}" min="0"></div>
-      <div><label class="f">開工日期</label><input type="date" id="c-start" value="${project.start_date || ''}"></div>
-      <div><label class="f">預計完工日期</label><input type="date" id="c-end" value="${flags._contract_end_date || ''}"></div>
+      <div><label class="f" for="c-company">裝修公司</label><input type="text" id="c-company" value="${esc(q.company || '')}" placeholder="例：安居工程"></div>
+      <div><label class="f" for="c-total">合約總額（$）</label><input type="number" id="c-total" value="${q.total || ''}" min="0"></div>
+      <div><label class="f" for="c-start">開工日期</label><input type="date" id="c-start" value="${project.start_date || ''}"></div>
+      <div><label class="f" for="c-end">預計完工日期</label><input type="date" id="c-end" value="${flags._contract_end_date || ''}"></div>
     </div>
-    <label class="f">份合約包咗邊啲工程？</label><p class="dt">唔肯定就揀「要問清楚」，唔好當成已包括。</p>
-    <div class="contractscopeform">${scopeRows}</div>
-    <label class="f">上載已簽合約（PDF／相片，可選）</label><input type="file" id="c-file" accept=".pdf,image/*">
+    <div class="f" id="contractscope-label">份合約包咗邊啲工程？</div><p class="dt" id="contractscope-hint">唔肯定就揀「要問清楚」，唔好當成已包括。</p>
+    <div class="contractscopeform" role="group" aria-labelledby="contractscope-label" aria-describedby="contractscope-hint">${scopeRows}</div>
+    <label class="f" for="c-file">上載已簽合約（PDF／相片，可選）</label><input type="file" id="c-file" accept=".pdf,image/*">
     <div class="mtop"><button class="btn" id="c-save">${editing ? '儲存更改' : '儲存已簽合約'}</button> <button class="btn gh" id="c-cancel">取消</button></div>`;
 }
 
@@ -1509,7 +1510,7 @@ function compareTableHtml(quotes) {
 }
 
 function quoteItemRowHtml(it) {
-  return `<div class="lirow"><div class="lirowline"><input type="text" data-li-name placeholder="項目（例：睡房訂造櫃）" value="${esc(it.name || '')}"><input type="text" inputmode="numeric" data-li-amount placeholder="金額" value="${it.amount === '' || it.amount === null || it.amount === undefined ? '' : esc(String(it.amount))}"><button type="button" class="iconbtn" data-li-del aria-label="刪除此項">🗑️</button></div><small class="lierr" style="color:var(--danger)"></small></div>`;
+  return `<div class="lirow"><div class="lirowline"><input type="text" data-li-name aria-label="項目名稱" placeholder="項目（例：睡房訂造櫃）" value="${esc(it.name || '')}"><input type="text" inputmode="numeric" data-li-amount aria-label="金額（$）" placeholder="金額" value="${it.amount === '' || it.amount === null || it.amount === undefined ? '' : esc(String(it.amount))}"><button type="button" class="iconbtn" data-li-del aria-label="刪除此項">🗑️</button></div><small class="lierr" style="color:var(--danger)"></small></div>`;
 }
 
 // 收集＋驗證明細；回傳 { items, total, ok }。留空／非數字一律 inline 報錯，唔會當 0。
@@ -1534,25 +1535,25 @@ function quoteFormHtml(editing, missingScopes) {
   const items = quoteLineItems(q);
   const legacy = !!editing && !items;
   const breakdownInputs = BREAKDOWN_CATS.map(c => `
-    <div><label class="f">${c.label}</label><input type="number" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
+    <div><label class="f" for="q-bd-${c.key}">${c.label}</label><input type="number" id="q-bd-${c.key}" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
   const flagChecks = FLAGS.map(f => `
     <label><input type="checkbox" data-flag="${f.key}" ${(q.flags && q.flags[f.key]) ? 'checked' : ''}> ${esc(f.label)}${f.weight===2?' <span style="color:var(--danger);font-weight:700">⚠</span>':''}</label>`).join('');
   return `
     <h3>${editing ? '編輯報價' : '新增公司報價'}</h3>
-    ${missingScopes.length ? `<label class="f">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${((q.flags && q.flags._quote_for) || state.prefillQuoteScope) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
-    <label class="f">公司名稱</label>
+    ${missingScopes.length ? `<label class="f" for="q-quote-for">呢份報價處理邊個合約漏項？</label><select id="q-quote-for"><option value="">未指定</option>${missingScopes.map(item => `<option value="${esc(item.label)}" ${((q.flags && q.flags._quote_for) || state.prefillQuoteScope) === item.label ? 'selected' : ''}>${esc(item.label)}</option>`).join('')}</select>` : ''}
+    <label class="f" for="q-company">公司名稱</label>
     <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
-    <label class="f">工程項目（總價 = 明細合計）</label>
+    <div class="f" id="q-items-label">工程項目（總價 = 明細合計）</div>
     ${legacy ? '<div class="note" id="q-legacy-note">呢份舊報價未有工程明細，總價暫時沿用原有金額。請補返項目同金額；補完之後總價會自動等於明細合計。</div>' : ''}
-    <div id="q-items">${(items && items.length ? items : [{ name: '', amount: '' }]).map(it => quoteItemRowHtml(it)).join('')}</div>
+    <div id="q-items" role="group" aria-labelledby="q-items-label">${(items && items.length ? items : [{ name: '', amount: '' }]).map(it => quoteItemRowHtml(it)).join('')}</div>
     <button type="button" class="btn sm gh" id="q-additem">＋ 加項目</button>
-    <label class="f">總價（$）— 自動計算，唔使輸入</label>
+    <label class="f" for="q-total">總價（$）— 自動計算，唔使輸入</label>
     <input type="text" id="q-total" readonly value="${q.total || ''}" placeholder="$0">
-    <label class="f">大類金額</label>
-    <div class="grid2">${breakdownInputs}</div>
-    <label class="f">十條紅旗（剔咗代表呢間公司有呢個問題；⚠ 係重點扣分項）</label>
-    <div class="flaglist">${flagChecks}</div>
-    <label class="f">上載報價單檔案（PDF／相片，可選）</label>
+    <div class="f" id="q-bd-label">大類金額</div>
+    <div class="grid2" role="group" aria-labelledby="q-bd-label">${breakdownInputs}</div>
+    <div class="f" id="q-flags-label">十條紅旗（剔咗代表呢間公司有呢個問題；⚠ 係重點扣分項）</div>
+    <div class="flaglist" role="group" aria-labelledby="q-flags-label">${flagChecks}</div>
+    <label class="f" for="q-file">上載報價單檔案（PDF／相片，可選）</label>
     <input type="file" id="q-file" accept=".pdf,image/*">
     <div class="mtop">
       <button class="btn" id="q-save">${editing ? '儲存' : '加入比較'}</button>

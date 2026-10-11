@@ -58,30 +58,30 @@ function stageCardHtml(stage, idx, responsibility, focused) {
       <details class="acc-native" style="margin-top:8px">
         <summary style="cursor:pointer;font-size:.82rem;color:var(--green);font-weight:700">驗收 checklist（${doneCount}/${items.length}）${checklist.tag ? ' · ' + checklist.tag : ''}</summary>
         <ul class="chk">
-          ${items.map((it, i) => `<li><input type="checkbox" data-check="${stage.id}:${i}" ${checked[i] ? 'checked' : ''}><span><b>${esc(it[0])}</b><small>${esc(it[1])}</small></span></li>`).join('')}
+          ${items.map((it, i) => `<li><input type="checkbox" id="chk-${stage.id}-${i}" data-check="${stage.id}:${i}" ${checked[i] ? 'checked' : ''}><label for="chk-${stage.id}-${i}"><b>${esc(it[0])}</b><small>${esc(it[1])}</small></label></li>`).join('')}
         </ul>
       </details>`;
   }
   const photos = state.photosByStage[stage.id] || [];
   const photosHtml = `
     <div class="photos">
-      ${photos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delphoto="${stage.id}:${p.id}:${esc(p.path)}">×</button></div>`).join('')}
-      <div class="ph add" data-addphoto="${stage.id}">＋</div>
+      ${photos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delphoto="${stage.id}:${p.id}:${esc(p.path)}" aria-label="刪除相片">×</button></div>`).join('')}
+      <div class="ph add" data-addphoto="${stage.id}" role="button" tabindex="0" aria-label="新增相片">＋</div>
     </div>
-    <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" style="display:none">`;
+    <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" aria-label="選擇相片" style="display:none">`;
   return `
     <div class="stgcard ${cls} ${focused ? 'focused' : ''}" id="stage-${stage.id}">
       <div class="t"><b>${idx + 1}. ${def.n}</b>${pill}</div>
       ${responsibility ? `<div class="stageresponsibility ${responsibility.ready ? 'ready' : ''}"><span>負責公司</span><b>${responsibility.company ? esc(responsibility.company) : '未落實'}</b><small>${responsibility.source ? `${responsibility.source} · ${esc(responsibility.label)}` : (responsibility.status === 'check' ? '要先向主承辦商問清楚' : '未揀定額外報價')}</small><a href="#/quotes">查看責任來源 →</a></div>` : ''}
       <div class="grid2 mtop">
-        <div><label class="f">開工日期</label><input type="date" data-datefield="${stage.id}:started_on" value="${stage.started_on || ''}"></div>
-        <div><label class="f">完成日期</label><input type="date" data-datefield="${stage.id}:finished_on" value="${stage.finished_on || ''}"></div>
-        <div><label class="f">驗收日期</label><input type="date" data-datefield="${stage.id}:inspected_on" value="${stage.inspected_on || ''}"></div>
+        <div><label class="f" for="df-${stage.id}-started_on">開工日期</label><input type="date" id="df-${stage.id}-started_on" data-datefield="${stage.id}:started_on" value="${stage.started_on || ''}"></div>
+        <div><label class="f" for="df-${stage.id}-finished_on">完成日期</label><input type="date" id="df-${stage.id}-finished_on" data-datefield="${stage.id}:finished_on" value="${stage.finished_on || ''}"></div>
+        <div><label class="f" for="df-${stage.id}-inspected_on">驗收日期</label><input type="date" id="df-${stage.id}-inspected_on" data-datefield="${stage.id}:inspected_on" value="${stage.inspected_on || ''}"></div>
       </div>
       ${checklistHtml}
       ${photosHtml}
-      <label class="f">備註</label>
-      <textarea data-notefield="${stage.id}" placeholder="例：主人房加咗一個 LAN 位">${esc(stage.note || '')}</textarea>
+      <label class="f" for="note-${stage.id}">備註</label>
+      <textarea id="note-${stage.id}" data-notefield="${stage.id}" placeholder="例：主人房加咗一個 LAN 位">${esc(stage.note || '')}</textarea>
     </div>`;
 }
 
@@ -136,6 +136,9 @@ function attachBuildEvents(project) {
     const stageId = el.dataset.addphoto;
     const input = appEl.querySelector(`[data-fileinput="${stageId}"]`);
     input.click();
+  }));
+  appEl.querySelectorAll('[data-addphoto]').forEach(el => el.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); }
   }));
   appEl.querySelectorAll('[data-fileinput]').forEach(el => el.addEventListener('change', async () => {
     const stageId = el.dataset.fileinput;
