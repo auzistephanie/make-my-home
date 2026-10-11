@@ -82,10 +82,28 @@ label.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;margin:
 .chiprow span.on{color:var(--green);font-weight:700}
 
 /* ---------- tables ---------- */
-.tbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbwrap{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  /* 橫向捲動提示：左右兩邊仲有內容嗰邊顯示陰影（純 CSS，捲到盡頭陰影自動消失） */
+  background:
+    linear-gradient(to right,#fff 30%,rgba(255,255,255,0)) left center,
+    linear-gradient(to left,#fff 30%,rgba(255,255,255,0)) right center,
+    radial-gradient(farthest-side at 0 50%,rgba(45,42,38,.22),rgba(45,42,38,0)) left center,
+    radial-gradient(farthest-side at 100% 50%,rgba(45,42,38,.22),rgba(45,42,38,0)) right center;
+  background-repeat:no-repeat;background-color:#fff;
+  background-size:40px 100%,40px 100%,14px 100%,14px 100%;
+  background-attachment:local,local,scroll,scroll;
+}
 table.tb{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px;min-width:340px}
 table.tb th{text-align:left;padding:7px 8px;background:var(--green-soft);color:var(--green);font-size:.74rem;white-space:nowrap}
 table.tb td{padding:7px 8px;border-bottom:1px dashed var(--line);vertical-align:top}
+/* 大類金額對比：公司名可以斷行，3 間公司剛好放得入 375px；4 間或以上先橫向捲動，
+   第一欄（泥水／水電…）固定喺左邊，捲動時仍然知道睇緊邊一行 */
+table.tb.cmp{min-width:0}
+table.tb.cmp th,table.tb.cmp td{min-width:76px}
+table.tb.cmp th{white-space:normal;line-height:1.25;vertical-align:bottom}
+table.tb.cmp th:first-child,table.tb.cmp td:first-child{min-width:52px;position:sticky;left:0;z-index:1}
+table.tb.cmp td:first-child{background:#fff}
 
 /* ---------- quotes ---------- */
 .qcard{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;background:#FFFDF9}

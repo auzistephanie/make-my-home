@@ -88,6 +88,7 @@ const state = {
   pendingCalibrationLine: null, // {x1,y1,x2,y2} normalized — line awaiting a real-world length input
   quotes: [],
   quoteFormOpen: false,
+  lastQuoteFormKey: null, // 上次 render 時打開咗邊個表單（'quote:<id>'／'contract:<id>'／null），用嚟判斷表單係咪剛剛打開
   contractFormOpen: false,
   editingQuoteId: null,
   prefillQuoteScope: null,
@@ -178,6 +179,7 @@ window.addEventListener('DOMContentLoaded', () => {
 async function route() {
   const hash = location.hash || '#/login';
   const path = hash.split('?')[0];
+  if (path !== '#/quotes') state.lastQuoteFormKey = null;   // 離開報價頁再返嚟，表單仍然開住就再捲動一次
   try {
     // `return renderXxx()` (without await) does NOT let this try/catch see a
     // LATER rejection from renderXxx — the try block already returned by the
@@ -1368,6 +1370,28 @@ async function renderQuotes() {
   appEl.innerHTML = chromeShell('quotes', body, projectRowHtml());
   attachChromeEvents();
   attachQuotesEvents(project, contract);
+
+  // 表單喺列表同對比表下面，手機要自己捲落去先見到。表單「剛打開／換咗編輯對象」就捲到表單；
+  // 新增時順手 focus 公司名（編輯唔 focus，免得鍵盤彈出遮住想改嘅欄位）。
+  // 同一個表單開住期間嘅其他 re-render（例如刪除另一間公司）唔會再捲，免得跳走。
+  const formKey = state.contractFormOpen ? 'contract:' + (state.editingQuoteId || '')
+    : (state.quoteFormOpen ? 'quote:' + (state.editingQuoteId || '') : null);
+  if (formKey && formKey !== state.lastQuoteFormKey) {
+    const firstField = document.getElementById(state.contractFormOpen ? 'c-company' : 'q-company');
+    const card = firstField && firstField.closest('.card');
+    if (card) {
+      card.style.scrollMarginTop = '72px';   // 留位畀 sticky 嘅 .apphead
+      card.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      if (!state.editingQuoteId) firstField.focus({ preventScroll: true });
+    }
+  } else if (!formKey && state.lastQuoteFormKey) {
+    // 表單剛剛收埋（儲存或取消）：返到頂部，見到新增／更新咗嘅公司同對比表
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }
+  state.lastQuoteFormKey = formKey;
+}
+function prefersReducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
 // 額外報價「已確認」＝標記已簽約，或者喺漏項責任度揀咗做負責公司。
@@ -1477,7 +1501,7 @@ function quoteCardHtml(q) {
 
 function compareTableHtml(quotes) {
   const rows = BREAKDOWN_CATS.map(c => `<tr><td>${c.label}</td>${quotes.map(q => `<td>${(q.breakdown && q.breakdown[c.key]) ? money(q.breakdown[c.key]) : '<span style="color:var(--muted)">—</span>'}</td>`).join('')}</tr>`).join('');
-  return `<div class="card"><h3>大類金額對比</h3><div class="tbwrap"><table class="tb">
+  return `<div class="card"><h3>大類金額對比</h3><div class="tbwrap"><table class="tb cmp">
     <tr><th>大類</th>${quotes.map(q => `<th>${esc(q.company)}</th>`).join('')}</tr>
     ${rows}
     <tr><td><b>總價</b></td>${quotes.map(q => `<td><b>${money(q.total)}</b></td>`).join('')}</tr>
