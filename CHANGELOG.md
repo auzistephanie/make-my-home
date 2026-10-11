@@ -2,6 +2,9 @@
 
 > 改動記錄出口：新條目一律插喺呢個檔案頂部。CLAUDE.md 只放路由同現行規則。
 
+- 2026-10-11（再追加）：**鎖死 supabase-js 版本**——`app.html` 由 `@supabase/supabase-js@2`（每次載入都攞最新 2.x，當時解析去 2.117.3，只係 4 日前先出）改做 `@2.116.0`（最新一個出咗 30 日以上嘅 2.x）。原因：library 一更新就可能無聲無息整壞登入／DB，同呢個 project 嘅 Navigator Locks 問題（見上面注意事項）一樣屬於「唔係自己改 code 都壞」嘅風險。localhost 實測：library 載入、登入頁正常、auth／from／storage 用到嘅 9 個 API 全部存在、未登入 query `reno_projects` 回 200＋空陣列（RLS 生效）、0 console error。**未驗證**：真 Google 登入＋F5 持久（需 Google 戶口）——升級版本時要再手動行一次。升級方法：改 `app.html` 第 8 行版本號，揀出咗 ≥2 星期嘅 2.x，上面行 `getSession`／一個 CRUD 先 push。
+
+
 - 2026-10-11（追加）：**RLS 收緊——子表寫入要擁有 parent**（`supabase/migrations/007_rls_parent_ownership.sql`，已 apply 落 production，migration 名 `reno_rls_parent_ownership`）。6 個子表（rooms／quotes／stages／legal_finance_records → projects；photos → stages；room_photos → rooms）嘅 insert＋update policy 加 `exists(parent.user_id = auth.uid())`，update 加明確 `with check` 防止將行搬去人哋 parent 下面；select／delete 冇改。做法：①先核實現有資料 0 行 child／parent 擁有者唔一致；②喺 DO block 入面 apply 新 policy＋測試再 rollback（綵排）；③正式 apply；④再測一次。結果：B 將 6 種子表掛入 A 嘅 parent 全部 42501 拒絕；A 喺自己 project 新增 6 種資料、改 quote／stages／legal／room_photos 全部正常；A 將 room 搬去唔屬於自己嘅 project 被拒；12 條 policy 有 parent 檢查；0 殘留。**未驗證**：真 browser 登入用 app 新增／編輯（需 Google 登入）——DB 層模擬已涵蓋 app 用到嘅 insert／update 路徑。
 
 
