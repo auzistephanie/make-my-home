@@ -21,7 +21,7 @@ async function renderLegal() {
   const records = state.legalRecords.filter(r => r.category === activeTab);
   const tabLabel = (LEGAL_TABS.find(t => t.key === activeTab) || {}).label || '';
 
-  let body = `<div class="roomtab">${LEGAL_TABS.map(t => `<span class="${activeTab === t.key ? 'on' : ''}" data-legaltab="${t.key}">${t.label}</span>`).join('')}</div>`;
+  let body = `<div class="roomtab">${LEGAL_TABS.map(t => `<button type="button" class="${activeTab === t.key ? 'on' : ''}" data-legaltab="${t.key}" aria-pressed="${activeTab === t.key}">${t.label}</button>`).join('')}</div>`;
   body += records.length ? records.map(r => legalCardHtml(r)).join('') : `<div class="empty">未有${esc(tabLabel)}記錄，撳下面新增。</div>`;
 
   if (state.legalFormOpen) {

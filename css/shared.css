@@ -66,9 +66,9 @@ label.f,div.f{display:block;font-size:.78rem;color:var(--ink2);font-weight:700;m
 
 /* ---------- needs wizard ---------- */
 .roomtab{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
-.roomtab span{flex:0 0 auto;border-radius:999px;padding:6px 14px;font-size:.82rem;background:#F1EADB;color:var(--ink2);cursor:pointer;white-space:nowrap}
-.roomtab span.on{background:var(--green);color:#FAF6EF;font-weight:700}
-.roomtab span.add{background:#fff;border:1.5px dashed var(--accent);color:var(--accent)}
+.roomtab span,.roomtab button{flex:0 0 auto;border-radius:999px;padding:6px 14px;font-size:.82rem;background:#F1EADB;color:var(--ink2);cursor:pointer;white-space:nowrap;border:none;font-family:inherit}
+.roomtab span.on,.roomtab button.on{background:var(--green);color:#FAF6EF;font-weight:700}
+.roomtab span.add,.roomtab button.add{background:#fff;border:1.5px dashed var(--accent);color:var(--accent)}
 .stepdots{display:flex;gap:5px;margin:10px 0}
 .stepdots i{width:22px;height:5px;border-radius:3px;background:var(--line);display:block}
 .stepdots i.on{background:var(--accent)}
@@ -143,7 +143,7 @@ table.tb.cmp td:first-child{background:#fff}
 .contractscoperow select{padding:7px 8px;font-size:.77rem}
 .sectionlabel{font-size:.72rem;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:18px 2px 8px}
 .contractdetails{margin-top:12px}
-.contractdetails summary{cursor:pointer;color:var(--green);font-size:.78rem;font-weight:700;padding:4px 0}
+.contractdetails summary{cursor:pointer;color:var(--green);font-size:.78rem;font-weight:700;padding:10px 0}
 .gapcenter{background:#FFFDF9;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:12px}
 .gapcenterhead h3{font-size:1rem;margin:3px 0}
 .gapcenterhead p{font-size:.77rem;color:var(--ink2);margin:0}
@@ -429,3 +429,23 @@ table.tb.cmp td:first-child{background:#fff}
 .field-err{color:var(--danger);font-size:.8rem;margin:4px 2px 0;line-height:1.4}
 .is-invalid{border-color:var(--danger)!important;background:var(--danger-soft)}
 .is-invalid:focus{outline-color:var(--danger);box-shadow:0 0 0 2px rgba(168,64,47,.25)}
+
+/* ===== 觸控目標（2026-10-12）：手指撳嘅位最少約 44px（Apple HIG／WCAG 2.5.5）=====
+   大部分直接加高；外觀要保持細嘅（頭像、logo、刪除相片 ×、連結）用透明 ::after 擴大點擊範圍，唔改版面。
+   膠囊掣（chips／房間分頁）40px：同排有 6px 空隙，避免撳錯隔籬。 */
+input[type=text],input[type=number],input[type=date],select{min-height:44px}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.iconbtn{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+.projrow select{min-height:44px}
+.counter button{width:44px;height:44px}
+.chiprow label,.chiprow button.chipbtn,.roomtab span,.roomtab button{min-height:40px;display:inline-flex;align-items:center}
+.flaglist{gap:0}
+.flaglist label{min-height:44px;align-items:center}
+.flaglist input{margin-top:0}
+.chk li{min-height:44px}
+summary{padding-block:10px}
+.avatar,.apphead .lg,.ph .rm,.stageresponsibility a{position:relative}
+.avatar::after{content:"";position:absolute;inset:-6px}
+.apphead .lg::after{content:"";position:absolute;inset:-10px 0}
+.ph .rm::after{content:"";position:absolute;inset:-13px}
+.stageresponsibility a::after{content:"";position:absolute;inset:-14px 0}

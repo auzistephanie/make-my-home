@@ -714,8 +714,8 @@ function roomTabsBarHtml() {
   return `
     <div class="rowflex">
       <div class="roomtab" style="flex:1">
-        ${state.rooms.map(r => `<span class="${r.id === state.activeRoomId ? 'on' : ''}" data-room="${r.id}">${esc(r.name)}</span>`).join('')}
-        <span class="add" data-addroom="1">＋</span>
+        ${state.rooms.map(r => `<button type="button" class="${r.id === state.activeRoomId ? 'on' : ''}" data-room="${r.id}" aria-pressed="${r.id === state.activeRoomId}">${esc(r.name)}</button>`).join('')}
+        <button type="button" class="add" data-addroom="1" aria-label="新增房間">＋</button>
       </div>
     </div>
     ${state.addRoomFormOpen ? `<div class="card">
