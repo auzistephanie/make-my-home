@@ -4,7 +4,7 @@
    Q「你係邊種裝修新手」3 條問題，放喺結尾 CTA 前
    插畫：AI 生成（OpenRouter，Gemini 3 Pro Image），香港復古插畫風，img/landing/*.webp。
    所有規則限定喺 .fun 入面（.fun-nav／#fun-a／#fun-c／#fun-quiz／.trap-chip），唔影響 shared.css／app。 */
-.fun{--f-ink:#2D2A26;--f-ink2:#6B645B;--f-accent:#C4622D;--f-accent-dk:#8E3E1E;--f-green:#3E5C50;--f-green-dk:#2F4A3E;--f-mustard:#D9A441;--f-dark:#1F1B16;--f-cream:#FFFDF7}
+.fun{--f-ink:#2D2A26;--f-ink2:#6B645B;--f-accent:#B4532B;--f-accent-dk:#8E3E1E;--f-green:#3E5C50;--f-green-dk:#2F4A3E;--f-mustard:#D9A441;--f-dark:#1F1B16;--f-cream:#FFFDF7}
 .fun *{box-sizing:border-box}
 .fun img{display:block;max-width:none}
 .fbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:999px;padding:12px 20px;font-weight:800;font-size:1rem;text-decoration:none;min-height:46px;font-family:inherit;cursor:pointer;line-height:1.2}

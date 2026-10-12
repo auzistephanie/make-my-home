@@ -63,3 +63,40 @@
 .fx-celebrate span{font-size:.8rem;opacity:.88;line-height:1.45;display:block}
 @media(prefers-reduced-motion:reduce){.fx-celebrate,.fx-celebrate.show{transition:none}}
 @media print{.fx-celebrate,.fx-tileedge{display:none!important}}
+
+/* ---------- 第 2 批 ---------- */
+/* 按屋種提醒 */
+.fx-flatrow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px dashed var(--line)}
+.fx-flatrow:first-of-type{border-top:0}
+.fx-flatrow img{width:38px;height:auto;flex:0 0 auto}
+.fx-flatrow b{display:block;font-size:.84rem}
+.fx-flatrow span{display:block;font-size:.76rem;color:var(--ink2);line-height:1.5}
+/* 額外工程佔比警報 */
+.fx-extra{display:flex;gap:10px;align-items:center;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.78rem;line-height:1.5}
+.fx-extra img{width:42px;height:auto;flex:0 0 auto}
+.fx-extra b{display:block;font-size:.84rem}
+.fx-extra.mid{background:#FBF1D9;color:#7A560F}
+.fx-extra.high{background:var(--danger-soft);color:var(--danger)}
+/* 施工相前後對比 */
+.fx-cmp{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;margin-top:10px;touch-action:pan-y;user-select:none;background:#222}
+.fx-cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fx-cmp .aft{clip-path:inset(0 0 0 var(--x,50%))}
+.fx-cmp .bar{position:absolute;top:0;bottom:0;left:var(--x,50%);width:4px;margin-left:-2px;background:#fff;box-shadow:0 0 10px rgba(0,0,0,.3);pointer-events:none}
+.fx-cmp .knob{position:absolute;top:50%;left:var(--x,50%);width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#fff;text-align:center;line-height:44px;font-weight:900;color:var(--green);box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none}
+.fx-cmp .lab{position:absolute;top:10px;padding:4px 10px;border-radius:999px;font-weight:800;font-size:.74rem;background:rgba(31,27,22,.8);color:#fff;pointer-events:none}
+.fx-cmp .lab.l{left:10px}.fx-cmp .lab.r{right:10px;background:var(--accent)}
+.fx-cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+/* 桌面兩欄：≥900px 先生效，手機版面完全唔變 */
+@media(min-width:900px){
+  #app{max-width:980px}
+  .body{padding:20px 24px 28px}
+  .body:not(.fx-dash){max-width:700px;margin:0 auto}
+  .body.fx-dash{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}
+  .body.fx-dash>.dashintro,.body.fx-dash>.nextcard,.body.fx-dash>.timingalert,.body.fx-dash>.dashgrid,.body.fx-dash>.projectsummary,.body.fx-dash>.fx-extra{grid-column:1 / -1}
+  .nextcard.fx{padding-right:120px}
+  .nextcard.fx .fx-guide{width:100px}
+  .fx-slot img{width:48px}
+  .fx-projchip{flex:0 1 320px}
+  .apphead.fx{gap:14px}
+  .apphead.fx .avatar{margin-left:auto}
+}

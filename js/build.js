@@ -68,7 +68,8 @@ function stageCardHtml(stage, idx, responsibility, focused) {
       ${photos.map(p => `<div class="ph"><img src="${p.url}" alt=""><button class="rm" data-delphoto="${stage.id}:${p.id}:${esc(p.path)}" aria-label="刪除相片">×</button></div>`).join('')}
       <div class="ph add" data-addphoto="${stage.id}" role="button" tabindex="0" aria-label="新增相片">＋</div>
     </div>
-    <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" aria-label="選擇相片" style="display:none">`;
+    <input type="file" accept="image/*" multiple data-fileinput="${stage.id}" aria-label="選擇相片" style="display:none">
+    ${photos.length >= 2 ? `<button type="button" class="btn sm gh" data-cmp="${stage.id}" aria-expanded="false">⇆ 前後對比</button><div data-cmpbox="${stage.id}"></div>` : ''}`;
   return `
     <div class="stgcard ${cls} ${focused ? 'focused' : ''}" id="stage-${stage.id}">
       <div class="t"><b>${idx + 1}. ${def.n}</b>${pill}</div>
@@ -86,6 +87,13 @@ function stageCardHtml(stage, idx, responsibility, focused) {
 }
 
 function attachBuildEvents(project) {
+  appEl.querySelectorAll('[data-cmp]').forEach(btn => btn.addEventListener('click', () => {
+    const box = appEl.querySelector(`[data-cmpbox="${btn.dataset.cmp}"]`);
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    box.innerHTML = open ? '' : stageCompareHtml(state.photosByStage[btn.dataset.cmp] || []);
+    if (!open) bindStageCompare(box);
+  }));
   appEl.querySelectorAll('[data-focus-stage]').forEach(el => el.addEventListener('click', () => {
     document.getElementById(`stage-${el.dataset.focusStage}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
@@ -107,6 +115,7 @@ function attachBuildEvents(project) {
       renderBuild();
       // 防水（泥水）工序驗收日期剛剛填好 → 拆咗漏水伏
       if (field === 'inspected_on' && value && !prev && stage.key === 'wet' && stage.finished_on) celebrateFu('leak', '泥水防水已驗收（48 小時試水要合格先算數）。');
+      else if (field === 'inspected_on' && value && !prev && stage.finished_on) celebrateStage(stage.key);
     } catch (e) { stage[field] = prev; toast(e.message, true); renderBuild(); }
   }));
 

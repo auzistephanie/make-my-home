@@ -56,6 +56,7 @@ async function renderSpending() {
   const body = `
     <div class="hero-num"><div class="n">${money(grandTotal)}</div><div class="l">已落實總支出承諾</div></div>
     <div class="note">呢個數只計「已落實」嘅金額——已簽合約、已簽約或已選定嘅額外工程報價，同埋法律財務入面狀態係「已落實」或「完成」嘅記錄。報價中／未落實嘅候選金額唔會計入；想睇返逐項，去「揀公司」或「法律財務」對照。</div>
+    ${contract ? extraWorksAlertHtml(extraWorksAlert(contract.total, extraTotal), money) : ''}
     <div class="card">
       <h3>按 module 分項</h3>
       ${rows.map(r => `<div class="deadlinerow"><b>${money(r.amount)}</b><span>${esc(r.label)} · ${esc(r.note)}</span></div>`).join('')}

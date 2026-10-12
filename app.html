@@ -223,7 +223,7 @@ async function guard() {
 }
 
 // ---------------- shared chrome ----------------
-function chromeShell(activeTab, bodyHtml, projRowHtml) {
+function chromeShell(activeTab, bodyHtml, projRowHtml, bodyClass) {
   const tabs = [
     { key: 'dashboard', hash: '#/dashboard', ic: '🏠', label: '今日' },
     { key: 'needs',     hash: '#/needs',     ic: '📋', label: '規劃' },
@@ -240,7 +240,7 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
       <button class="avatar" id="avatarBtn" title="登出" aria-label="登出">${esc((state.user && state.user.email || 'S')[0].toUpperCase())}</button>
     </div>
     <div class="fx-tileedge" aria-hidden="true"></div>
-    <div class="body">${bodyHtml}</div>
+    <div class="body${bodyClass ? ' ' + bodyClass : ''}">${bodyHtml}</div>
     <div class="tabbar">
       ${tabs.map(t => `<button data-nav="${t.hash}" class="${activeTab === t.key ? 'on' : ''}"><span class="ic">${t.ic}</span>${t.label}</button>`).join('')}
     </div>
@@ -451,6 +451,7 @@ async function renderDashboard() {
     else if (days <= 0 && notStarted) timingAlert = '預計開工日已到，記得更新實際工期狀態。';
   }
 
+  const extraAlertHtml = signedContract ? extraWorksAlertHtml(extraWorksAlert(signedContract.total, committedExtraQuotes(signedContract, contractOtherQuotes).reduce((n, q) => n + (+q.total || 0), 0)), money) : '';
   const body = `
     <div class="dashintro">
       <div><div class="eyebrow">你今日嘅裝修重點</div><h2>${esc(project.name)}</h2><div class="dt">${project.start_date ? `預計 ${dispDate(project.start_date)} 開工` : '未設定開工日期'}</div></div>
@@ -461,6 +462,8 @@ async function renderDashboard() {
       <img class="fx-guide" src="img/landing/mascot.webp" alt="" width="78" height="127">
     </div>
     ${fuDexHtml(computeFuDex(project, quotes, stages))}
+    ${flatHintHtml(project)}
+    ${extraAlertHtml}
     ${timingAlert ? `<div class="timingalert">⚠️ <span><b>時間提醒：</b>${timingAlert}</span></div>` : ''}
     <div class="dashgrid">
       <div class="card routecard">
@@ -479,7 +482,7 @@ async function renderDashboard() {
       <div class="rowflex"><h3>Project 設定</h3><button class="iconbtn" id="editProjBtn">✏️ 編輯</button></div>
       <div class="dt">${flatTypeLabel(project.flat_type)} · ${project.size_sqft || '?'} 呎 · ${scopeLabel(project.scope)} · 預算上限 ${project.budget_cap ? money(project.budget_cap) : '未設'} · ${photoCount} 張施工相</div>
     </div>`;
-  appEl.innerHTML = chromeShell('dashboard', body, projectRowHtml());
+  appEl.innerHTML = chromeShell('dashboard', body, projectRowHtml(), 'fx-dash');
   attachChromeEvents();
   appEl.querySelectorAll('[data-fuhash]').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.fuhash; }));
   document.getElementById('nextActionBtn').addEventListener('click', () => {
@@ -529,10 +532,19 @@ function renderOnboarding() {
         <div><label class="f" for="obSize">實用面積（呎）</label><input type="number" id="obSize" value="${data.size_sqft || 450}" min="100" max="3000"></div>
         <div><label class="f" for="obScope">工程範圍</label><select id="obScope">${SCOPES.map(s => `<option value="${s.value}" ${data.scope === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
         <div><label class="f" for="obDate">預計開工日期</label><input type="date" id="obDate" value="${data.start_date || ''}"></div>
-      </div><p class="dt">之後可以喺 Project 設定修改。</p>`;
+      </div>
+      <div class="f" id="obFlatLbl" style="margin-top:14px">你住邊種屋？<small class="dt"> 我哋會提你嗰種屋專屬嘅伏</small></div>
+      <div class="choicegrid" role="group" aria-labelledby="obFlatLbl">${FLAT_TYPES.map(t => `<button type="button" class="choicecard ${(data.flat_type || 'private') === t.value ? 'selected' : ''}" aria-pressed="${(data.flat_type || 'private') === t.value}" data-flatchoice="${t.value}" style="min-height:60px"><b style="margin:0">${t.label}</b></button>`).join('')}</div>
+      <p class="dt">之後可以喺 Project 設定修改。</p>`;
   }
   appEl.innerHTML = `<div class="onboardhead"><b>裝修無伏</b><small>MAKEMYHOME</small></div><div class="onboardwrap"><div class="onboardsteps">${[0,1].map(i => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>${content}<div class="onboardactions">${step ? '<button class="btn gh" id="obBack">← 返回</button>' : '<span></span>'}<button class="btn" id="obNext">${step === 1 ? '建立我嘅計劃 →' : '下一步 →'}</button></div></div>`;
   appEl.querySelectorAll('[data-stagechoice]').forEach(btn => btn.addEventListener('click', () => { data.stage = btn.dataset.stagechoice; renderOnboarding(); }));
+  appEl.querySelectorAll('[data-flatchoice]').forEach(btn => btn.addEventListener('click', () => {
+    data.name = (document.getElementById('obName') || {}).value || data.name; data.scope = (document.getElementById('obScope') || {}).value || data.scope;
+    data.start_date = (document.getElementById('obDate') || {}).value || data.start_date || null;
+    const sz = document.getElementById('obSize'); if (sz && sz.value) data.size_sqft = sz.value;
+    data.flat_type = btn.dataset.flatchoice; renderOnboarding();
+  }));
   const back = document.getElementById('obBack');
   if (back) back.addEventListener('click', () => { state.onboardingStep--; renderOnboarding(); });
   const obSizeInput = document.getElementById('obSize');
@@ -559,7 +571,7 @@ function renderOnboarding() {
         size_sqft: data.size_sqft,
         scope: data.scope || 'full',
         start_date: data.start_date,
-        flat_type: 'private',
+        flat_type: FLAT_TYPES.some(t => t.value === data.flat_type) ? data.flat_type : 'private',
       });
       state.currentProjectId = created.id;
       saveCurrentProjectId(state.user.id, created.id);

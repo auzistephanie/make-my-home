@@ -5,7 +5,7 @@
 
 :root{
   --bg:#FAF6EF; --card:#FFF; --ink:#2D2A26; --ink2:#6B645B; --muted:#9A917F;
-  --accent:#C4622D; --accent-soft:#F3DFD2;
+  --accent:#B4532B; --accent-soft:#F3DFD2;
   --green:#3E5C50; --green-soft:#E3EAE6;
   --mustard:#D9A441;
   --line:#E8E0D2; --danger:#A8402F; --danger-soft:#F6E3DF;
@@ -398,7 +398,7 @@ table.tb.cmp td:first-child{background:#fff}
 
 .land-final{text-align:center}
 .land-final .btn{font-size:1rem;padding:14px 28px}
-.footer-note{text-align:center;color:var(--muted);font-size:.76rem;padding:26px 18px 40px;line-height:1.8}
+.footer-note{text-align:center;color:#6F6755;font-size:.76rem;padding:26px 18px 40px;line-height:1.8}
 .sec-dark .footer-note{color:rgba(245,239,226,.5)}
 
 @media(max-width:480px){
