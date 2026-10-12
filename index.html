@@ -18,23 +18,150 @@
 <meta property="og:image:alt" content="裝修無伏 MakeMyHome — 香港裝修新手嘅全程管家">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/landing3d.css">
 </head>
 <body>
 
+<!-- ================= 3D 入屋開場（取代原本 hero，2026-10-12）：放喺 main 外面，因為 .landpage 有 overflow-x:hidden＋max-width，會令 sticky 失效同收窄 ================= -->
+<section class="intro" id="h3d" aria-label="裝修無伏：3D 入屋開場">
+  <nav class="nav"><div class="brand">裝修無伏<small>MAKEMYHOME</small></div><a class="navgo" href="app.html">免費開始 →</a></nav>
+  <div class="stage" id="h3d-stage">
+    <div class="sun"></div>
+    <div class="cloud" style="top:10%;animation-delay:-20s"><svg width="170" height="60" viewBox="0 0 170 60"><path d="M20 50 Q0 50 6 36 Q10 24 28 28 Q34 8 58 12 Q72 0 92 10 Q112 2 122 22 Q146 18 150 36 Q168 40 160 50Z" fill="#fff"/></svg></div>
+    <div class="cloud" style="top:20%;animation-duration:120s;animation-delay:-75s"><svg width="120" height="44" viewBox="0 0 170 60"><path d="M20 50 Q0 50 6 36 Q10 24 28 28 Q34 8 58 12 Q72 0 92 10 Q112 2 122 22 Q146 18 150 36 Q168 40 160 50Z" fill="#fff"/></svg></div>
+
+    <div class="scaler" id="h3d-scaler">
+      <div class="world" id="h3d-world">
+
+        <!-- ===================== landscape ===================== -->
+        <div class="pl hills" data-out style="width:14000px;height:1500px;margin:-750px 0 0 -7000px;transform:translate3d(0,-470px,-6200px)">
+          <svg viewBox="0 0 1400 150" preserveAspectRatio="none">
+            <path d="M0 150 L0 92 L90 80 L180 60 L250 70 L330 40 L380 28 L410 34 L440 18 L470 30 L540 52 L620 46 L700 70 L800 58 L880 72 L960 50 L1030 62 L1120 44 L1200 66 L1300 58 L1400 76 L1400 150Z" fill="#9AB0A6"/>
+            <path d="M0 150 L0 112 L120 100 L220 106 L300 92 L400 100 L520 88 L640 104 L760 96 L880 108 L1000 94 L1120 104 L1240 98 L1400 110 L1400 150Z" fill="#87A096"/>
+            <g fill="#7E958C"><rect x="560" y="96" width="10" height="30"/><rect x="574" y="88" width="12" height="38"/><rect x="590" y="100" width="9" height="26"/><rect x="602" y="84" width="14" height="42"/><rect x="620" y="94" width="10" height="32"/><rect x="760" y="98" width="11" height="28"/><rect x="775" y="90" width="9" height="36"/><rect x="788" y="102" width="12" height="24"/></g>
+            <defs><linearGradient id="h3d-haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#93A884"/><stop offset="1" stop-color="#C9D0B0" stop-opacity="0"/></linearGradient></defs><rect x="0" y="118" width="1400" height="32" fill="url(#h3d-haze)"/>
+          </svg>
+        </div>
+        <div class="pl lawn" data-out style="width:5200px;height:5200px;margin:-2600px 0 0 -2600px;transform:translate3d(0,280px,300px) rotateX(90deg)"></div>
+        <div class="pl groundshadow" data-out style="width:1700px;height:1700px;margin:-850px 0 0 -850px;transform:translate3d(260px,279.5px,-480px) rotateX(90deg)"></div>
+        <div class="pl path" data-out style="width:170px;height:2600px;margin:-1300px 0 0 -85px;transform:translate3d(0,279px,1360px) rotateX(90deg)"></div>
+
+        <!-- ===================== house exterior ===================== -->
+        <!-- facade (z=0) in three pieces around the doorway -->
+        <div class="pl stucco" data-out style="width:420px;height:560px;margin:-280px 0 0 -210px;transform:translate3d(-290px,0,0)">
+          <div class="quoin" style="left:0"></div>
+          <div class="shutter" style="left:58px;top:146px;height:178px"></div><div class="shutter" style="left:302px;top:146px;height:178px"></div>
+          <div class="win" style="left:112px;top:146px;width:188px;height:178px"></div>
+          <div class="sill" style="left:100px;top:322px;width:212px"></div>
+          <div class="flowerbox" style="left:112px;top:332px;width:188px"><svg viewBox="0 0 188 34"><rect x="0" y="10" width="188" height="24" rx="3" fill="#7A4E2C"/><g fill="#4E7A5E"><circle cx="18" cy="10" r="12"/><circle cx="50" cy="6" r="13"/><circle cx="90" cy="9" r="12"/><circle cx="128" cy="5" r="13"/><circle cx="166" cy="9" r="12"/></g><g fill="#D9A441"><circle cx="30" cy="2" r="5"/><circle cx="108" cy="0" r="5"/><circle cx="150" cy="3" r="5"/></g><g fill="#C4622D"><circle cx="70" cy="1" r="5"/><circle cx="176" cy="0" r="4"/></g></svg></div>
+        </div>
+        <div class="pl stucco" data-out style="width:420px;height:560px;margin:-280px 0 0 -210px;transform:translate3d(290px,0,0)">
+          <div class="quoin" style="right:0"></div>
+          <div class="pipe" style="right:34px"></div>
+          <div class="shutter" style="left:66px;top:146px;height:178px"></div><div class="shutter" style="left:310px;top:146px;height:178px"></div>
+          <div class="win" style="left:120px;top:146px;width:188px;height:178px"></div>
+          <div class="sill" style="left:108px;top:322px;width:212px"></div>
+          <div class="flowerbox" style="left:120px;top:332px;width:188px"><svg viewBox="0 0 188 34"><rect x="0" y="10" width="188" height="24" rx="3" fill="#7A4E2C"/><g fill="#4E7A5E"><circle cx="18" cy="9" r="12"/><circle cx="54" cy="5" r="13"/><circle cx="92" cy="9" r="12"/><circle cx="130" cy="6" r="13"/><circle cx="168" cy="9" r="12"/></g><g fill="#C4622D"><circle cx="36" cy="1" r="5"/><circle cx="112" cy="0" r="5"/></g><g fill="#D9A441"><circle cx="74" cy="2" r="5"/><circle cx="156" cy="1" r="5"/></g></svg></div>
+          <div class="sconce" style="left:6px;top:226px"><i></i></div>
+        </div>
+        <div class="pl stucco" data-out style="width:160px;height:260px;margin:-130px 0 0 -80px;transform:translate3d(0,-150px,0)">
+          <div class="plaque" style="top:70px">裝修無伏</div>
+        </div>
+        <!-- gable + attic vent -->
+        <div class="pl gable" data-out style="width:1000px;height:270px;margin:-135px 0 0 -500px;transform:translate3d(0,-415px,0)"><div class="vent"></div></div>
+        <!-- door reveal (wall thickness), frame and step -->
+        <div class="pl jamb" data-out style="width:22px;height:300px;margin:-150px 0 0 -11px;transform:translate3d(-80px,130px,-11px) rotateY(90deg)"></div>
+        <div class="pl jamb" data-out style="width:22px;height:300px;margin:-150px 0 0 -11px;transform:translate3d(80px,130px,-11px) rotateY(90deg)"></div>
+        <div class="pl jamb" data-out style="width:160px;height:22px;margin:-11px 0 0 -80px;transform:translate3d(0,-20px,-11px) rotateX(90deg)"></div>
+        <div class="pl frame" data-out style="width:200px;height:322px;margin:-161px 0 0 -100px;transform:translate3d(0,120px,1px)"></div>
+        <div class="pl stone" data-out style="width:260px;height:70px;margin:-35px 0 0 -130px;transform:translate3d(0,256px,35px) rotateX(90deg)"></div>
+        <div class="pl stone front" data-out style="width:260px;height:24px;margin:-12px 0 0 -130px;transform:translate3d(0,268px,70px)"></div>
+        <!-- exterior side walls (separate from the room so the outside never shows interior paint) -->
+        <div class="pl stucco" data-out style="width:1100px;height:560px;margin:-280px 0 0 -550px;transform:translate3d(-508px,0,-550px) rotateY(90deg)">
+          <div class="win" style="left:420px;top:150px;width:150px;height:160px"></div><div class="sill" style="left:410px;top:308px;width:170px"></div>
+        </div>
+        <div class="pl stucco shade" data-out style="width:1100px;height:560px;margin:-280px 0 0 -550px;transform:translate3d(508px,0,-550px) rotateY(-90deg)">
+          <div class="win" style="left:430px;top:150px;width:150px;height:160px;filter:brightness(.85)"></div><div class="sill" style="left:420px;top:308px;width:170px;filter:brightness(.85)"></div>
+        </div>
+        <!-- pitched roof: two slopes (27°) with overhang + ridge cap -->
+        <div class="pl roof" data-out style="width:600px;height:1190px;margin:-595px 0 0 -300px;transform:translate3d(-268px,-418px,-550px) rotateZ(-27deg) rotateX(90deg)"></div>
+        <div class="pl roof shade" data-out style="width:600px;height:1190px;margin:-595px 0 0 -300px;transform:translate3d(268px,-418px,-550px) rotateZ(27deg) rotateX(90deg)"></div>
+        <div class="pl ridge" data-out style="width:34px;height:1200px;margin:-600px 0 0 -17px;transform:translate3d(0,-552px,-550px) rotateX(90deg)"></div>
+        <!-- door, hinged on its left edge -->
+        <div class="pl door" id="h3d-door" data-out style="width:160px;height:300px;margin:-150px 0 0 -80px;transform-origin:0 50%;transform:translate3d(0,130px,0)">
+          <div class="glass"></div><div class="panel" style="top:96px;height:74px"></div><div class="panel" style="top:186px;height:84px"></div><div class="knob"></div>
+        </div>
+        <!-- shrubs -->
+        <div class="pl bush" data-out style="width:220px;height:120px;margin:-120px 0 0 -110px;transform:translate3d(-330px,280px,70px)"><svg viewBox="0 0 220 120"><ellipse cx="110" cy="116" rx="100" ry="8" fill="rgba(30,36,20,.3)"/><g fill="#56805F"><circle cx="40" cy="80" r="38"/><circle cx="90" cy="62" r="48"/><circle cx="150" cy="74" r="42"/><circle cx="188" cy="90" r="28"/></g><g fill="#6B9671"><circle cx="78" cy="48" r="24"/><circle cx="140" cy="58" r="22"/></g><g fill="#D9A441"><circle cx="62" cy="64" r="4"/><circle cx="120" cy="52" r="4"/><circle cx="164" cy="80" r="4"/></g></svg></div>
+        <div class="pl bush" data-out style="width:220px;height:120px;margin:-120px 0 0 -110px;transform:translate3d(330px,280px,70px)"><svg viewBox="0 0 220 120"><ellipse cx="110" cy="116" rx="100" ry="8" fill="rgba(30,36,20,.3)"/><g fill="#4C7556"><circle cx="34" cy="88" r="30"/><circle cx="84" cy="66" r="46"/><circle cx="144" cy="70" r="46"/><circle cx="192" cy="86" r="30"/></g><g fill="#5F8968"><circle cx="100" cy="46" r="24"/><circle cx="160" cy="54" r="20"/></g><g fill="#C4622D"><circle cx="70" cy="58" r="4"/><circle cx="150" cy="48" r="4"/></g></svg></div>
+
+        <!-- ===================== interior (1000 × 560 × 1100) ===================== -->
+        <div class="pl floor" style="width:1000px;height:1100px;margin:-550px 0 0 -500px;transform:translate3d(0,280px,-550px) rotateX(90deg)"></div>
+        <div class="pl ceil" style="width:1000px;height:1100px;margin:-550px 0 0 -500px;transform:translate3d(0,-280px,-550px) rotateX(-90deg)">
+          <div class="lamp" id="h3d-lamp" style="top:760px;transform:rotateX(90deg);transform-origin:top"><i></i><b></b></div>
+        </div>
+        <div class="pl wall" style="width:1000px;height:560px;margin:-280px 0 0 -500px;transform:translate3d(0,0,-1100px)">
+          <div class="fresh"></div><div class="tape" style="left:57%"></div><div class="wallglow"></div><div class="bwin"></div>
+        </div>
+        <div class="pl wall side" style="width:1100px;height:560px;margin:-280px 0 0 -550px;transform:translate3d(-500px,0,-550px) rotateY(90deg)"></div>
+        <div class="pl wall side" style="width:1100px;height:560px;margin:-280px 0 0 -550px;transform:translate3d(500px,0,-550px) rotateY(-90deg)"></div>
+        <!-- light from the window on the floor, drop cloth, contact shadows -->
+        <div class="pl lightpatch" data-in style="width:520px;height:560px;margin:-280px 0 0 -260px;transform:translate3d(90px,279.4px,-820px) rotateX(90deg)"></div>
+        <div class="pl dropcloth" data-in style="width:560px;height:400px;margin:-200px 0 0 -280px;transform:translate3d(250px,279px,-860px) rotateX(90deg)"></div>
+        <div class="pl contact" data-in style="width:360px;height:110px;margin:-55px 0 0 -180px;transform:translate3d(-250px,278.8px,-890px) rotateX(90deg)"></div>
+        <div class="pl contact" data-in style="width:200px;height:200px;margin:-100px 0 0 -100px;transform:translate3d(285px,278.6px,-900px) rotateX(90deg)"></div>
+
+        <!-- sofa under a dust sheet -->
+        <div class="pl bill" data-in style="width:320px;height:170px;margin:-170px 0 0 -160px;transform:translate3d(-250px,280px,-900px)">
+          <svg viewBox="0 0 320 170"><path d="M14 72 Q10 44 40 40 L280 40 Q310 44 306 72 L314 150 Q300 162 290 158 L30 158 Q18 162 6 150Z" fill="#ECE8DF"/><path d="M40 40 Q60 18 160 16 Q260 18 280 40 Q220 52 160 50 Q100 52 40 40Z" fill="#F6F3EC"/><path d="M60 60 Q90 120 70 158 M130 56 Q150 110 140 158 M200 58 Q220 110 214 158 M262 62 Q274 110 280 156" stroke="#D5D0C4" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M6 150 Q60 162 160 158 Q260 162 314 150 L316 166 L4 166Z" fill="#DCD7CC"/><rect x="34" y="158" width="10" height="12" fill="#4E2F1B"/><rect x="276" y="158" width="10" height="12" fill="#4E2F1B"/></svg>
+        </div>
+        <!-- A-frame ladder (two leaning planes + top cap) -->
+        <div class="pl" data-in style="width:0;height:0;transform:translate3d(300px,280px,-910px)">
+          <div class="pl rail" style="width:130px;height:360px;margin:-360px 0 0 -65px;transform-origin:50% 100%;transform:translateZ(70px) rotateX(11.2deg)">
+            <svg viewBox="0 0 130 360"><rect x="6" y="0" width="14" height="360" rx="3" fill="#C9A26A"/><rect x="110" y="0" width="14" height="360" rx="3" fill="#B88F57"/><g fill="#D9B47A"><rect x="18" y="62" width="94" height="10" rx="2"/><rect x="18" y="132" width="94" height="10" rx="2"/><rect x="18" y="202" width="94" height="10" rx="2"/><rect x="18" y="272" width="94" height="10" rx="2"/></g><rect x="4" y="0" width="122" height="8" fill="#7A5A2E"/></svg>
+          </div>
+          <div class="pl rail" style="width:130px;height:360px;margin:-360px 0 0 -65px;transform-origin:50% 100%;transform:translateZ(-70px) rotateX(-11.2deg);filter:brightness(.82)">
+            <svg viewBox="0 0 130 360"><rect x="6" y="0" width="14" height="360" rx="3" fill="#C9A26A"/><rect x="110" y="0" width="14" height="360" rx="3" fill="#B88F57"/><path d="M20 120 L110 230 M110 120 L20 230" stroke="#9B7845" stroke-width="5"/></svg>
+          </div>
+          <div class="pl" style="width:140px;height:44px;margin:-22px 0 0 -70px;transform:translate3d(0,-353px,0) rotateX(90deg);background:linear-gradient(90deg,#8D6634,#A97E44);border-radius:4px"></div>
+          <!-- paint can on the top cap -->
+          <div class="pl bill" style="width:60px;height:62px;margin:-62px 0 0 -30px;transform:translate3d(0,-354px,0)"><svg viewBox="0 0 60 62"><rect x="4" y="10" width="52" height="50" rx="5" fill="#C4622D"/><ellipse cx="30" cy="10" rx="26" ry="7" fill="#E7DCC6"/><ellipse cx="30" cy="10" rx="20" ry="4.5" fill="#3E5C50"/><rect x="4" y="26" width="52" height="16" fill="#F6EFE0"/><path d="M16 30 h28 M16 36 h18" stroke="#3E5C50" stroke-width="3"/></svg></div>
+        </div>
+        <!-- paint cans + roller tray on the drop cloth -->
+        <div class="pl bill" data-in style="width:96px;height:112px;margin:-112px 0 0 -48px;transform:translate3d(130px,280px,-760px)">
+          <svg viewBox="0 0 96 112"><path d="M8 22 Q8 108 14 108 L82 108 Q88 108 88 22Z" fill="#DADDE0"/><path d="M8 22 L8 104 Q48 116 88 104 L88 22" fill="url(#h3d-canshade)"/><ellipse cx="48" cy="22" rx="40" ry="11" fill="#A8AEB3"/><ellipse cx="48" cy="22" rx="34" ry="8" fill="#3E5C50"/><path d="M84 26 Q90 52 84 64" stroke="#3E5C50" stroke-width="7" stroke-linecap="round" fill="none"/><rect x="8" y="46" width="80" height="36" fill="#F6EFE0"/><rect x="8" y="46" width="80" height="8" fill="#3E5C50"/><text x="48" y="74" font-size="13" font-weight="800" text-anchor="middle" fill="#3E5C50" font-family="sans-serif">墨綠</text><path d="M14 22 Q48 -6 82 22" stroke="#6C7276" stroke-width="3" fill="none"/>
+            <defs><linearGradient id="h3d-canshade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".05"/><stop offset=".45" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient></defs></svg>
+        </div>
+        <div class="pl bill" data-in style="width:90px;height:104px;margin:-104px 0 0 -45px;transform:translate3d(40px,280px,-700px)">
+          <svg viewBox="0 0 96 112"><path d="M8 22 Q8 108 14 108 L82 108 Q88 108 88 22Z" fill="#DADDE0"/><path d="M8 22 L8 104 Q48 116 88 104 L88 22" fill="url(#h3d-canshade)"/><ellipse cx="48" cy="22" rx="40" ry="11" fill="#C9CDD0"/><circle cx="48" cy="20" r="6" fill="#8E949A"/><rect x="8" y="46" width="80" height="36" fill="#F6EFE0"/><rect x="8" y="46" width="80" height="8" fill="#C4622D"/><text x="48" y="74" font-size="13" font-weight="800" text-anchor="middle" fill="#C4622D" font-family="sans-serif">磚紅</text></svg>
+        </div>
+        <div class="pl bill" data-in style="width:170px;height:70px;margin:-70px 0 0 -85px;transform:translate3d(400px,280px,-700px)">
+          <svg viewBox="0 0 170 70"><path d="M6 46 L120 40 L150 64 L14 68Z" fill="#BFC4C8"/><path d="M60 50 L118 46 L140 62 L70 64Z" fill="#4C7563"/><rect x="20" y="20" width="96" height="22" rx="11" fill="#4C7563"/><rect x="20" y="20" width="96" height="8" rx="4" fill="#6A9481"/><path d="M116 31 L140 31 L140 4 L166 4" stroke="#55585b" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+
+        <!-- hotspots -->
+        <a class="pl hs" data-hs="0" href="#calc-timeline" style="--c:#F3DFD2;margin:-70px 0 0 -112px;transform:translate3d(-300px,-150px,-760px)"><span class="ic">📅</span><b>工期計算</b><small>要預幾耐？輸入面積即刻有分階段時間表</small><span class="go">去計 →</span></a>
+        <a class="pl hs" data-hs="1" href="#calc-budget" style="--c:#F6E8C8;margin:-70px 0 0 -112px;transform:translate3d(300px,-150px,-760px)"><span class="ic">💰</span><b>預算計算</b><small>預留幾多先夠？連應急錢一齊計埋</small><span class="go">去計 →</span></a>
+        <a class="pl hs" data-hs="2" href="#cta-final" style="--c:#E3EAE6;margin:-70px 0 0 -112px;transform:translate3d(-300px,70px,-760px)"><span class="ic">📊</span><b>報價比較</b><small>三間公司並排比，十條紅旗即刻見</small><span class="go">睇下 →</span></a>
+        <a class="pl hs" data-hs="3" href="#journey" style="--c:#EADCC8;margin:-70px 0 0 -112px;transform:translate3d(300px,70px,-760px)"><span class="ic">✅</span><b>施工驗收</b><small>七個工序逐個驗，影相留底有根據</small><span class="go">睇下 →</span></a>
+      </div>
+    </div>
+
+    <!-- 2D overlays -->
+    <div class="ov ov1"><span class="eyebrow">香港裝修新手全程管家</span><h1>裝修<em>無伏</em></h1><p>要預幾耐・點同設計師傾・點樣驗收 — 一個 app 搞掂</p><p class="trust">下面全部工具唔使登入都用得 · 覺得有用先開戶口儲低你嘅計劃</p>
+      <div class="ctas"><a class="btn primary" href="app.html">免費開始 →</a><a class="btn ghost" href="#calc-timeline">先試下計算器</a></div></div>
+    <div class="ov ov2"><span>推開門，入嚟睇下</span></div>
+    <div class="ov ov3"><div class="box"><h2>歡迎返屋企</h2><p>由諗需求、比報價到驗收，四樣工具一屋過幫你搞掂 — 撳張卡試下</p>
+      <div class="hs2d"><a href="#calc-timeline">📅 工期計算</a><a href="#calc-budget">💰 預算計算</a><a href="#cta-final">📊 報價比較</a><a href="#journey">✅ 施工驗收</a></div></div></div>
+    <div class="hint">捲落去・入屋睇下</div>
+    <div class="arrow bob" id="h3d-arrow" aria-hidden="true"><svg viewBox="0 0 86 110"><path d="M28 4 H58 V58 H82 L43 106 L4 58 H28Z" fill="#D9A441" stroke="#2F4A3E" stroke-width="6" stroke-linejoin="round"/><path d="M36 14 V62" stroke="rgba(255,255,255,.55)" stroke-width="6" stroke-linecap="round"/></svg></div>
+    <div class="prog"><i></i></div>
+  </div>
+</section>
+
 <main class="landpage">
 
-<!-- ================= HERO ================= -->
-<header class="land-hero" style="--tile-a:#D9A441;--tile-b:#C4622D">
-  <div class="tiles"></div>
-  <h1>裝修無伏</h1>
-  <div class="en">M A K E M Y H O M E</div>
-  <p class="tag">香港裝修新手嘅全程管家 —<br>要預幾耐・點同設計師傾・點樣驗收，一個 app 搞掂</p>
-  <div class="cta">
-    <a class="btn primary" href="app.html">免費開始 →</a>
-    <a class="btn ghost" href="#calc-timeline">先試下計算器</a>
-  </div>
-  <div class="trust">下面全部工具唔使登入都用得 · 覺得有用先開戶口儲低你嘅計劃</div>
-</header>
+
 
 <!-- ================= 三大痛點 ================= -->
 <section class="landsec sec-cream" id="painpoints">
@@ -258,6 +385,7 @@
 
 <script src="js/content.js"></script>
 <script src="js/validate.js"></script>
+<script src="js/landing3d.js"></script>
 <script>
 /* ============================================================
    landing.html — 免登入靜態內容 + 兩個互動計算器。
