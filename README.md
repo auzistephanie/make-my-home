@@ -72,7 +72,7 @@ supabase/migrations/   schema, row-level security, storage policies
 ## Quality checks
 
 - Tested at 375px mobile width with no layout overflow and no console errors
-- Lighthouse mobile on the landing page (earlier static version): Performance 100, Accessibility 93, Best Practices 100, SEO 100
+- Lighthouse mobile on the live landing page (3 runs, with all illustrations): Performance 99–100, Accessibility 100, Best Practices 100, SEO 100; LCP about 1.5s, zero blocking time, zero layout shift, 229KiB transferred
 - Real sign-in and create/read/update/delete for every module confirmed in production logs
 
 ## Roadmap
