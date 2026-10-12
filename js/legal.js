@@ -7,8 +7,8 @@
 const LAWYER_STATUS = ['已聯絡', '報價中', '已落實', '完成'];
 const MORTGAGE_STATUS = ['申請中', '已批核', '已落實', '完成'];
 const LEGAL_TABS = [
-  { key: 'lawyer', label: '律師' },
   { key: 'mortgage', label: '按揭' },
+  { key: 'lawyer', label: '律師' },
 ];
 
 async function renderLegal() {
@@ -17,7 +17,7 @@ async function renderLegal() {
   if (!project) { toast('請先開一個 project', true); location.hash = '#/dashboard'; return; }
 
   state.legalRecords = await listLegalFinanceRecords(project.id);
-  const activeTab = state.legalTab || 'lawyer';
+  const activeTab = state.legalTab || 'mortgage';
   const records = state.legalRecords.filter(r => r.category === activeTab);
   const tabLabel = (LEGAL_TABS.find(t => t.key === activeTab) || {}).label || '';
 
