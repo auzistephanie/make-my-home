@@ -101,7 +101,6 @@ const state = {
   onboardingStep: 0,
   onboarding: {
     stage: 'plan',
-    goals: ['budget', 'needs'],
   },
 };
 
@@ -466,12 +465,6 @@ function renderOnboarding() {
     ['prepare', '🗓️', '準備開工', '已簽約，等緊開工'],
     ['build', '🧱', '施工中', '要跟進工期同驗收'],
   ];
-  const goalChoices = [
-    ['budget', '💰', '控制預算', '避免漏項同超支'],
-    ['needs', '🔌', '整理需求', '房間、傢俬、電掣一次過諗清楚'],
-    ['quotes', '🚩', '篩選報價', '比較價錢同合約風險'],
-    ['build', '✅', '施工驗收', '每個工序都有清單同相片'],
-  ];
   let content;
   if (step === 0) {
     content = `<div class="eyebrow">30 秒設定</div><h1>你而家去到裝修邊一步？</h1><p class="onboardlede">揀最接近嘅狀態，我哋會將首頁變成一張只顯示你下一步嘅行動清單。</p>
@@ -484,17 +477,9 @@ function renderOnboarding() {
         <div><label class="f" for="obScope">工程範圍</label><select id="obScope">${SCOPES.map(s => `<option value="${s.value}" ${data.scope === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
         <div><label class="f" for="obDate">預計開工日期</label><input type="date" id="obDate" value="${data.start_date || ''}"></div>
       </div><p class="dt">之後可以喺 Project 設定修改。</p>`;
-  } else {
-    content = `<div class="eyebrow">最想解決嘅事</div><h1>今次最需要我幫你睇實邊幾樣？</h1><p class="onboardlede">可以揀多過一項；首頁會優先顯示相關提醒。</p>
-      <div class="choicegrid">${goalChoices.map(([key, icon, title, desc]) => `<button class="choicecard ${data.goals.includes(key) ? 'selected' : ''}" aria-pressed="${data.goals.includes(key)}" data-goalchoice="${key}"><span>${icon}</span><b>${title}</b><small>${desc}</small></button>`).join('')}</div>`;
   }
-  appEl.innerHTML = `<div class="onboardhead"><b>裝修無伏</b><small>MAKEMYHOME</small></div><div class="onboardwrap"><div class="onboardsteps">${[0,1,2].map(i => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>${content}<div class="onboardactions">${step ? '<button class="btn gh" id="obBack">← 返回</button>' : '<span></span>'}<button class="btn" id="obNext">${step === 2 ? '建立我嘅計劃 →' : '下一步 →'}</button></div></div>`;
+  appEl.innerHTML = `<div class="onboardhead"><b>裝修無伏</b><small>MAKEMYHOME</small></div><div class="onboardwrap"><div class="onboardsteps">${[0,1].map(i => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>${content}<div class="onboardactions">${step ? '<button class="btn gh" id="obBack">← 返回</button>' : '<span></span>'}<button class="btn" id="obNext">${step === 1 ? '建立我嘅計劃 →' : '下一步 →'}</button></div></div>`;
   appEl.querySelectorAll('[data-stagechoice]').forEach(btn => btn.addEventListener('click', () => { data.stage = btn.dataset.stagechoice; renderOnboarding(); }));
-  appEl.querySelectorAll('[data-goalchoice]').forEach(btn => btn.addEventListener('click', () => {
-    const key = btn.dataset.goalchoice;
-    data.goals = data.goals.includes(key) ? data.goals.filter(g => g !== key) : data.goals.concat(key);
-    renderOnboarding();
-  }));
   const back = document.getElementById('obBack');
   if (back) back.addEventListener('click', () => { state.onboardingStep--; renderOnboarding(); });
   const obSizeInput = document.getElementById('obSize');
@@ -510,9 +495,9 @@ function renderOnboarding() {
       const obSizeRes = readNumber(obSizeEl, LIMITS.size, { required: true });
       if (!obSizeRes) { obSizeEl.focus(); return; }
       data.size_sqft = obSizeRes.value;
-      state.onboardingStep = 2; return renderOnboarding();
     }
-    if (!data.goals.length) { toast('請揀最少一項', true); return; }
+    // 第 2 步（單位資料）填完就直接建立 project——之前仲有一步「最想解決嘅事」，但揀咗嘅重點
+    // 成個 app 冇任何地方用到，所以拎走咗（2026-10-12）。
     const btn = document.getElementById('obNext');
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
     try {
@@ -525,7 +510,7 @@ function renderOnboarding() {
       });
       state.currentProjectId = created.id;
       saveCurrentProjectId(state.user.id, created.id);
-      saveOnboardingPrefs(state.user.id, { stage: data.stage, goals: data.goals });
+      saveOnboardingPrefs(state.user.id, { stage: data.stage });
       state.onboardingStep = 0;
       toast('你嘅裝修路線已經準備好 ✓');
       renderDashboard();
