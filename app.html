@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>裝修無伏 — MakeMyHome</title>
 <link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/app-fun.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
 </head>
 <body>
@@ -16,6 +17,7 @@
 <script src="js/db.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/content.js"></script>
+<script src="js/fu.js"></script>
 <script src="js/validate.js"></script>
 <script src="js/spending.js"></script>
 <script src="js/legal.js"></script>
@@ -230,24 +232,28 @@ function chromeShell(activeTab, bodyHtml, projRowHtml) {
     { key: 'legal',     hash: '#/legal',     ic: '⚖️', label: '法律財務' },
     { key: 'spending',  hash: '#/spending',  ic: '💰', label: '總支出' },
   ];
+  const curProj = (state.projects || []).find(p => p.id === state.currentProjectId) || (state.projects || [])[0];
   return `
-    <div class="apphead">
+    <div class="apphead fx">
       <button class="lg" data-nav="#/dashboard">裝修無伏<small>MAKEMYHOME</small></button>
+      ${projRowHtml ? projectChipHtml(curProj) : ''}
       <button class="avatar" id="avatarBtn" title="登出" aria-label="登出">${esc((state.user && state.user.email || 'S')[0].toUpperCase())}</button>
     </div>
-    ${projRowHtml || ''}
+    <div class="fx-tileedge" aria-hidden="true"></div>
     <div class="body">${bodyHtml}</div>
     <div class="tabbar">
       ${tabs.map(t => `<button data-nav="${t.hash}" class="${activeTab === t.key ? 'on' : ''}"><span class="ic">${t.ic}</span>${t.label}</button>`).join('')}
     </div>
   `;
 }
-function projectRowHtml() {
+// 頂部 project 掣：真 <select> 蓋喺掣上面（opacity:0），鍵盤／螢幕閱讀器照用；撳開係系統原生選單
+function projectChipHtml(cur) {
   const opts = state.projects.map(p => `<option value="${p.id}" ${p.id === state.currentProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-  return `<div class="projrow">🏠 Project：
-    <select id="projSelect" aria-label="切換 project">${opts}<option value="__new__">＋ 開新 project</option></select>
-  </div>`;
+  return `<label class="fx-projchip"><span>🏠 ${esc(cur ? cur.name : 'Project')} ▾</span>
+    <select id="projSelect" aria-label="切換 project">${opts}<option value="__new__">＋ 開新 project</option></select></label>`;
 }
+// 其他頁仍然用 projectRowHtml() 做開關（有 project 先出掣）；真正內容喺 chromeShell 畫
+function projectRowHtml() { return '1'; }
 function attachChromeEvents() {
   appEl.querySelectorAll('[data-nav]').forEach(el => el.addEventListener('click', () => { location.hash = el.dataset.nav; }));
   const avatarBtn = document.getElementById('avatarBtn');
@@ -450,10 +456,11 @@ async function renderDashboard() {
       <div><div class="eyebrow">你今日嘅裝修重點</div><h2>${esc(project.name)}</h2><div class="dt">${project.start_date ? `預計 ${dispDate(project.start_date)} 開工` : '未設定開工日期'}</div></div>
       <div class="overall"><b>${progress}%</b><span>整體準備</span><div class="miniprog"><i style="width:${progress}%"></i></div></div>
     </div>
-    <div class="nextcard">
-      <div><div class="eyebrow">而家最應該做</div><h3>${nextAction.title}</h3><p>${nextAction.desc}</p></div>
-      <button class="btn mustard" id="nextActionBtn">${nextAction.action}</button>
+    <div class="nextcard fx">
+      <div><div class="eyebrow">而家最應該做</div><h3>${nextAction.title}</h3><p>${nextAction.desc}</p><button class="btn mustard" id="nextActionBtn" style="margin-top:10px">${nextAction.action}</button></div>
+      <img class="fx-guide" src="img/landing/mascot.webp" alt="" width="78" height="127">
     </div>
+    ${fuDexHtml(computeFuDex(project, quotes, stages))}
     ${timingAlert ? `<div class="timingalert">⚠️ <span><b>時間提醒：</b>${timingAlert}</span></div>` : ''}
     <div class="dashgrid">
       <div class="card routecard">
@@ -474,6 +481,7 @@ async function renderDashboard() {
     </div>`;
   appEl.innerHTML = chromeShell('dashboard', body, projectRowHtml());
   attachChromeEvents();
+  appEl.querySelectorAll('[data-fuhash]').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.fuhash; }));
   document.getElementById('nextActionBtn').addEventListener('click', () => {
     if (nextAction.edit) renderNewProjectForm(false, project);
     else location.hash = nextAction.hash;
@@ -1384,7 +1392,7 @@ async function renderQuotes() {
   }
 
   if (!wantsContract && !contract) {
-    body += otherQuotes.length ? otherQuotes.map(q => quoteCardHtml(q)).join('') : '<div class="empty">未有公司報價，撳下面「＋ 加公司」開始比較。</div>';
+    body += otherQuotes.length ? otherQuotes.map(q => quoteCardHtml(q)).join('') : '<div class="empty fx"><img src="img/landing/mascot.webp" alt="" width="92" height="150"><div>未有公司報價。<br>收齊最少 3 份，伏就藏唔住喇！<br><small>撳下面「＋ 加公司」開始比較。</small></div></div>';
     body += otherQuotes.length ? compareTableHtml(otherQuotes) : '';
   } else if (otherQuotes.length) {
     body += `<div class="sectionlabel">額外工程報價</div>${otherQuotes.map(q => quoteCardHtml(q)).join('')}`;
@@ -1518,10 +1526,12 @@ function quoteCardHtml(q) {
     <div class="qcard" ${score < 5 ? 'style="border-color:var(--danger)"' : ''}>
       <div class="hd"><b>${esc(q.company)} ${q.status === 'signed' ? '<span class="pill g">已簽約</span>' : ''}</b><span class="price ${score < 5 ? 'bad' : ''}">${money(q.total)}</span></div>
       ${(q.flags && q.flags._quote_for) ? `<div class="quotefor">處理漏項：${esc(q.flags._quote_for)}</div>` : ''}
+      ${quoteFuHeadHtml(q)}
       <div class="bar2"><i style="width:${score*10}%;background:${color}"></i></div>
-      <div class="flagrow"><span class="score" style="color:${color}">報價安全度 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>${checkedFlags.length ? ' · ' + checkedFlags.slice(0,3).map(f=>esc(f)+' 🚩').join(' · ') + (checkedFlags.length>3?` 等 ${checkedFlags.length} 項`:'') : ' · 冇剔中紅旗'}
+      <div class="flagrow"><span class="score" style="color:${color}">報價安全度 ${score}/10${score>=8?' ✓':(score<5?' ✗':'')}</span>
         ${q.file_path ? ` · <a href="#" data-viewfile="${q.id}">📎 查看報價單</a>` : ''}
       </div>
+      ${quoteFlagChipsHtml(q)}
       <div class="mtop">
         <button class="btn sm gh" data-editquote="${q.id}">編輯</button>
         ${q.status !== 'signed' ? `<button class="btn sm" data-signquote="${q.id}" style="margin-left:6px">標記已簽約</button>` : `<button class="btn sm gh" data-unsignquote="${q.id}" style="margin-left:6px">取消已簽約</button>`}

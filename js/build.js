@@ -105,6 +105,8 @@ function attachBuildEvents(project) {
       await updateStage(stageId, { [field]: stage[field] });
       toast('已儲存');
       renderBuild();
+      // 防水（泥水）工序驗收日期剛剛填好 → 拆咗漏水伏
+      if (field === 'inspected_on' && value && !prev && stage.key === 'wet' && stage.finished_on) celebrateFu('leak', '泥水防水已驗收（48 小時試水要合格先算數）。');
     } catch (e) { stage[field] = prev; toast(e.message, true); renderBuild(); }
   }));
 

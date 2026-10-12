@@ -44,7 +44,9 @@ Sign-in is Google only. Calculators and guides stay public; anything that saves 
 
 ```
 index.html       public landing page and calculators
-css/landing3d.css, js/landing3d.js   scroll-driven 3D "walk into the house" intro (pure CSS 3D, no libraries)
+css/landing-fun.css, js/landing-fun.js   interactive landing: scroll-driven "bust the traps" street walk, pick-your-building, quiz
+img/landing/      AI-generated retro Hong Kong illustrations (WebP), shared by the landing page and the app
+js/fu.js, css/app-fun.css   the four "traps" as a shared language in the app: quote red flags grouped by trap, a trap checklist on the Today screen, a celebration card when a key stage passes inspection
 og.png           social preview image (1200×630) for link sharing
 app.html         signed-in app (hash-routed tabs)
 js/supabase.js   client setup (publishable key only)
@@ -65,12 +67,12 @@ supabase/migrations/   schema, row-level security, storage policies
 - **Building on what the data can actually support.** For the spending overview, an audit showed the schema couldn't tell paid from unpaid. Rather than invent a status field, v1 shows committed spend only.
 - **Errors surface instead of silently hanging.** supabase-js serialises session refresh across browser tabs. With several tabs open, a stuck lock can make every request hang with no error. I traced that in production, then wrapped every database call in a 15-second timeout that shows a clear message.
 - **Photos are compressed in the browser** before upload, to keep storage and mobile data use low.
-- **The landing intro is pure CSS 3D.** Scrolling walks the camera up the path and through the front door into a room mid-renovation. No WebGL or animation library; reduced-motion users get the finished interior as a still image.
+- **The landing page teaches by play.** Scrolling walks a first-time owner down a Hong Kong street where four common renovation traps pop up to be tapped away; then you pick your building type (tenement, village house, estate) and find three traps specific to it before a before/after slider unlocks. Each trap appears once across the page, so the games and the written guide below extend each other instead of repeating. Illustrations were generated with an image model and kept small (about 470KB in total) after an earlier CSS 3D version proved too heavy for iPhone Safari.
 
 ## Quality checks
 
 - Tested at 375px mobile width with no layout overflow and no console errors
-- Lighthouse mobile on the landing page (before the 3D intro): Performance 100, Accessibility 93, Best Practices 100, SEO 100
+- Lighthouse mobile on the landing page (earlier static version): Performance 100, Accessibility 93, Best Practices 100, SEO 100
 - Real sign-in and create/read/update/delete for every module confirmed in production logs
 
 ## Roadmap
