@@ -179,6 +179,14 @@ async function route() {
   const hash = location.hash || '#/login';
   const path = hash.split('?')[0];
   if (path !== '#/quotes') state.lastQuoteFormKey = null;   // 離開報價頁再返嚟，表單仍然開住就再捲動一次
+  // Google 登入被取消／失敗，Supabase 會帶 #error=…（隱式流程）或 ?error=…（PKCE）返嚟；
+  // 之前當成未知路由、靜靜跳去 #/login，用家唔知發生咩事。
+  const oauthErr = /^#error=/.test(hash) ? new URLSearchParams(hash.slice(1)).get('error') : new URLSearchParams(location.search).get('error');
+  if (oauthErr) {
+    state.loginError = loginErrorMessage(oauthErr);
+    if (location.search) history.replaceState(null, '', location.pathname);   // 清走 ?error=…，免得 refresh 又再出
+    location.hash = '#/login'; return;
+  }
   try {
     // `return renderXxx()` (without await) does NOT let this try/catch see a
     // LATER rejection from renderXxx — the try block already returned by the
@@ -258,21 +266,58 @@ function attachChromeEvents() {
 // ================================================================
 // #/login
 // ================================================================
+// 由 landing 計算器撳「儲存到我嘅 project」過嚟嘅話，sessionStorage 有 payload（登入後 consumeLandingPayload 會讀走）。
+// 呢度淨係 peek（唔移除），畀用家知道佢個計算結果仲喺度。數字照樣驗證，唔信 sessionStorage。
+function peekLandingPayload() {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(LANDING_PAYLOAD_KEY) || 'null');
+    if (!d || typeof d !== 'object') return null;
+    const sz = checkNumber(d.size_sqft, LIMITS.size), bg = checkNumber(d.budget_cap, LIMITS.budget);
+    const parts = [];
+    if (sz.ok && sz.value) parts.push(sz.value.toLocaleString('en-US') + ' 呎');
+    if (bg.ok && bg.value > 0) parts.push('預算約 ' + money(bg.value));
+    return parts.length ? parts.join('・') : null;
+  } catch (e) { return null; }
+}
+
+function loginErrorMessage(code) {
+  return code === 'access_denied'
+    ? '你取消咗 Google 登入。想繼續就再撳一次。'
+    : '登入唔成功，請再試一次。如果持續失敗，請檢查網絡，或者容許瀏覽器開啟 Google 登入視窗。';
+}
+
 async function renderLogin() {
   const session = await getSession();
   if (session) { location.hash = '#/dashboard'; return; }
+  const carried = peekLandingPayload();
+  const loginError = state.loginError || ''; state.loginError = '';
   appEl.innerHTML = `
     <div style="max-width:420px;margin:0 auto">
       <div class="body" style="text-align:center;padding:64px 24px">
         <div style="font-size:2.4rem">🏠</div>
         <h1 style="font-size:1.35rem;color:var(--green);margin:10px 0 4px">裝修無伏</h1>
-        <p style="font-size:.85rem;color:var(--ink2);margin-bottom:28px">儲存你嘅裝修計劃・報價比較・驗收記錄</p>
-        <button class="gbtn" id="googleBtn"><span class="gi"></span>用 Google 帳戶繼續</button>
-        <p style="font-size:.72rem;color:var(--muted);margin-top:20px">我哋只攞你個 email 做登入，唔會 send 嘢俾你</p>
+        <p style="font-size:.85rem;color:var(--ink2);margin-bottom:${carried ? '16px' : '28px'}">儲存你嘅裝修計劃・報價比較・驗收記錄</p>
+        ${carried ? `<div class="note good" style="text-align:left">✓ 你喺計算器揀嘅資料（${esc(carried)}）已經準備好，登入後會自動帶入新 project。</div>` : ''}
+        <button class="gbtn" id="googleBtn"><span class="gi"></span><span id="googleBtnLabel">用 Google 帳戶繼續</span></button>
+        <div class="field-err" id="loginErr" role="alert" ${loginError ? '' : 'hidden'} style="text-align:left;margin-top:12px">${esc(loginError)}</div>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:20px">我哋只攞你個 email 做登入，唔會 send 嘢俾你。你嘅計劃同相片只有你自己睇到。</p>
+        <p style="margin-top:18px"><a href="./" class="loginback">← 返回首頁，先試下免費計算器</a></p>
       </div>
     </div>`;
-  document.getElementById('googleBtn').addEventListener('click', () => loginWithGoogle());
+  const btn = document.getElementById('googleBtn'), label = document.getElementById('googleBtnLabel'), errBox = document.getElementById('loginErr');
+  btn.addEventListener('click', async () => {
+    errBox.hidden = true;
+    btn.disabled = true; label.textContent = '連接緊 Google…';   // 防止連撳；成功會成頁跳走
+    const err = await loginWithGoogle();
+    if (err) {
+      btn.disabled = false; label.textContent = '用 Google 帳戶繼續';
+      errBox.textContent = loginErrorMessage('failed');
+      errBox.hidden = false;
+    }
+  });
 }
+// 由 Google 頁撳返回（bfcache 還原）：個掣仲係「連接緊…」，要重新畫返
+window.addEventListener('pageshow', e => { if (e.persisted && location.hash === '#/login') renderLogin(); });
 
 // ================================================================
 // #/dashboard

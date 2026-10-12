@@ -449,3 +449,5 @@ summary{padding-block:10px}
 .apphead .lg::after{content:"";position:absolute;inset:-10px 0}
 .ph .rm::after{content:"";position:absolute;inset:-13px}
 .stageresponsibility a::after{content:"";position:absolute;inset:-14px 0}
+.loginback{font-size:.82rem;color:var(--green);font-weight:600;display:inline-block;padding:12px 8px}
+[hidden]{display:none!important}

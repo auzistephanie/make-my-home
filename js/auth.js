@@ -1,11 +1,13 @@
 // Google OAuth login/logout + session guard. Requires js/supabase.js loaded first.
 
+// 成功會成頁跳去 Google（唔會 return 返嚟）；失敗回傳 error，由呼叫方顯示畀用家睇。
 async function loginWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + window.location.pathname },
   });
   if (error) console.error('Google login failed:', error.message);
+  return error || null;
 }
 
 async function logout() {
