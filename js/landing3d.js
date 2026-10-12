@@ -29,12 +29,39 @@
   }
   fit(); addEventListener('resize', fit);
 
+  // 效能（2026-10-13 修「捲落去有啲 crash／卡」）：
+  // ①只寫有變嘅值（cache），唔再每格重寫幾十個 style；
+  // ②唔再喺 .stage 設 --p/--o1… 呢類會繼承落成棵 3D 樹嘅變數（每格令全部元素重算 style），改為直接寫落用到佢嘅元素；
+  // ③先讀門口位置再寫，避免強制 layout；④冇捲動／滑鼠未郁／開場唔喺畫面就停 rAF，唔會一直燒 CPU。
+  const q = sel => [...stage.querySelectorAll(sel)];
+  const sunCloud = q('.sun, .cloud'), ov1 = q('.ov1, .hint'), ov2 = q('.ov2'), ov3 = q('.ov3'), xvig = q('.xvig'), progBar = q('.prog i');
+  const ctas = stage.querySelector('.ov1 .ctas');
+  const cache = new WeakMap();
+  function put(el, prop, val) {           // 值冇變就唔寫
+    let c = cache.get(el); if (!c) cache.set(el, c = {});
+    if (c[prop] === val) return;
+    c[prop] = val;
+    if (prop[0] === '-') el.style.setProperty(prop, val); else el.style[prop] = val;
+  }
+  const putAll = (els, prop, val) => els.forEach(el => put(el, prop, val));
+  function toggleCls(el, cls, on) { const c = cache.get(el) || {}; if (c['_' + cls] === on) return; cache.set(el, Object.assign(c, { ['_' + cls]: on })); el.classList.toggle(cls, on); }
+
+  let lastP = -1;
   function render(){
     const vh = innerHeight, r = intro.getBoundingClientRect();
     const p = RM ? 1 : clamp(-r.top / (r.height - vh), 0, 1);
     // 開場捲完之後收起頂部 nav（佢係 position:fixed，唔收會遮住下面計算器）
-    intro.classList.toggle('h3d-past', r.bottom < vh * 0.35);
-    stage.style.setProperty('--p', p.toFixed(4));
+    toggleCls(intro, 'h3d-past', r.bottom < vh * 0.35);
+    mx += (tmx - mx) * .08; my += (tmy - my) * .08;
+
+    // 箭咀飛向門口：喺寫任何嘢之前讀位置（用上一格嘅 layout，唔會強制重排）；箭咀消失咗就唔使讀
+    const fly = ease(seg(p, .04, .4)), arrowOp = RM ? 0 : 1 - seg(p, .36, .44);
+    let ax = 0, ay = 0;
+    if (arrowOp > 0) {
+      const dr = door.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+      const sx = sr.width / 2, sy = sr.height * .8, tx = dr.left + dr.width / 2 - sr.left, ty = dr.top + dr.height * .55 - sr.top;
+      ax = lerp(sx, tx, fly); ay = lerp(sy, ty, fly) - Math.sin(fly * Math.PI) * sr.height * .12;
+    }
 
     // camera: approach (0–.38), door opens (.34–.52), walk in (.5–.76), settle (.76–1)
     const a = ease(seg(p, 0, .38)), w = ease(seg(p, .5, .76)), s = ease(seg(p, .76, 1));
@@ -42,42 +69,53 @@
     const ry = lerp(-16, 0, a) + lerp(0, 4, s);
     const rx = lerp(-5, 0, a) + lerp(0, -3, w);
     const cy = lerp(340, 0, a);   // 開頭屋放低，讓位畀標題同按鈕
-    mx += (tmx - mx) * .08; my += (tmy - my) * .08;
-    world.style.transform = `translate3d(0,${cy}px,${cz}px) rotateX(${rx + (RM ? 0 : -my * 4)}deg) rotateY(${ry + (RM ? 0 : mx * 6)}deg)`;
-
-    door.style.transform = doorBase + ` rotateY(${-108 * ease(seg(p, .34, .52))}deg)`;
+    const f = n => n.toFixed(2);
+    put(world, 'transform', `translate3d(0,${f(cy)}px,${f(cz)}px) rotateX(${f(rx + (RM ? 0 : -my * 4))}deg) rotateY(${f(ry + (RM ? 0 : mx * 6))}deg)`);
+    put(door, 'transform', doorBase + ` rotateY(${f(-108 * ease(seg(p, .34, .52)))}deg)`);
 
     const outside = 1 - seg(p, .6, .645);
-    outs.forEach(el => { el.style.opacity = outside; el.style.visibility = outside <= .001 ? 'hidden' : 'visible'; });
-    const inV = outside < .5 ? 'visible' : 'hidden';                  // CSS 3D 深度排序唔可靠：屋入面嘅細件喺屋外時收埋
-    ins.forEach(el => el.style.visibility = (p > .33 && outside > .5) || outside < .5 ? 'visible' : 'hidden');
-    lamp.style.visibility = inV;
-    stage.style.setProperty('--outside', outside.toFixed(3));
-    stage.style.setProperty('--cross', Math.sin(Math.PI * seg(p, .57, .69)).toFixed(3));
-    stage.classList.toggle('inside', p > .64);
+    const outOp = outside.toFixed(3), outVis = outside <= .001 ? 'hidden' : 'visible';
+    outs.forEach(el => { put(el, 'opacity', outOp); put(el, 'visibility', outVis); });
+    const inItems = (p > .33 && outside > .5) || outside < .5 ? 'visible' : 'hidden';   // CSS 3D 深度排序唔可靠：屋入面嘅細件喺屋外時收埋
+    ins.forEach(el => put(el, 'visibility', inItems));
+    put(lamp, 'visibility', outside < .5 ? 'visible' : 'hidden');
+    putAll(sunCloud, '--outside', outOp);
+    putAll(xvig, '--cross', Math.sin(Math.PI * seg(p, .57, .69)).toFixed(3));
+    toggleCls(stage, 'inside', p > .64);
+    toggleCls(stage, 'skip-gone', p < .12 || p > .78);   // 開頭「捲落去」提示淡出之後先出（唔好同佢疊埋），功能卡出嚟之前收起
 
-    stage.style.setProperty('--o1', (1 - seg(p, .05, .18)).toFixed(3));
-    stage.style.setProperty('--o2', (seg(p, .28, .36) * (1 - seg(p, .52, .6))).toFixed(3));
-    stage.style.setProperty('--o3', seg(p, .8, .9).toFixed(3));
-    stage.querySelector('.ov1 .ctas').style.pointerEvents = p < .08 ? 'auto' : 'none';
+    putAll(ov1, '--o1', (1 - seg(p, .05, .18)).toFixed(3));
+    putAll(ov2, '--o2', (seg(p, .28, .36) * (1 - seg(p, .52, .6))).toFixed(3));
+    putAll(ov3, '--o3', seg(p, .8, .9).toFixed(3));
+    putAll(progBar, '--p', p.toFixed(3));
+    put(ctas, 'pointerEvents', p < .08 ? 'auto' : 'none');
 
     hss.forEach((h, i) => {
       const t = ease(seg(p, .78 + i * .045, .86 + i * .045));
-      h.style.setProperty('--hso', t.toFixed(3));
-      h.style.transform = h.dataset.base + ` translateY(${(1 - t) * 40}px) scale(${.7 + .3 * t})`;
-      h.style.pointerEvents = t > .9 ? 'auto' : 'none';
+      put(h, '--hso', t.toFixed(3));
+      put(h, 'transform', h.dataset.base + ` translateY(${f((1 - t) * 40)}px) scale(${(.7 + .3 * t).toFixed(3)})`);
+      put(h, 'pointerEvents', t > .9 ? 'auto' : 'none');
     });
 
-    const dr = door.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    const fly = ease(seg(p, .04, .4));
-    const sx = sr.width / 2, sy = sr.height * .8, tx = dr.left + dr.width / 2 - sr.left, ty = dr.top + dr.height * .55 - sr.top;
-    const ax = lerp(sx, tx, fly), ay = lerp(sy, ty, fly) - Math.sin(fly * Math.PI) * sr.height * .12;
-    arrow.style.transform = `translate(${ax - 43}px,${ay - 55}px) scale(${lerp(1, .22, fly)})`;
-    arrow.style.opacity = RM ? 0 : (1 - seg(p, .36, .44)).toFixed(3);
-    arrow.classList.toggle('bob', p < .02);
+    put(arrow, 'opacity', arrowOp.toFixed(3));
+    if (arrowOp > 0) put(arrow, 'transform', `translate(${f(ax - 43)}px,${f(ay - 55)}px) scale(${lerp(1, .22, fly).toFixed(3)})`);
+    toggleCls(arrow, 'bob', p < .02);
+
+    const moving = Math.abs(p - lastP) > 1e-4 || Math.abs(tmx - mx) > .002 || Math.abs(tmy - my) > .002;
+    lastP = p;
+    return moving;
   }
-  let raf = 0;
-  function loop(){ render(); raf = requestAnimationFrame(loop); }
-  if (RM) { render(); addEventListener('scroll', render, { passive: true }); } else loop();
-  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else if (!RM) loop(); });
+
+  // 按需要先跑：有捲動／resize／滑鼠郁先開 rAF，靜止咗或者開場唔喺畫面就停
+  let raf = 0, onScreen = true;
+  function tick(){ raf = 0; if (render() && onScreen) kick(); }
+  function kick(){ if (!raf && !document.hidden) raf = requestAnimationFrame(tick); }
+  addEventListener('scroll', kick, { passive: true });
+  addEventListener('resize', kick);
+  if (!RM) addEventListener('mousemove', () => { if (onScreen) kick(); }, { passive: true });
+  document.addEventListener('visibilitychange', kick);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { onScreen = es[0].isIntersecting; if (onScreen) kick(); }).observe(intro);
+  }
+  render(); kick();
 })();
