@@ -762,12 +762,12 @@ function roomTabsBarHtml() {
 // structure obvious from anywhere inside it.
 function needsViewTabsHtml() {
   const tabs = [
-    { key: 'wizard', label: '📋 房間問卷' },
-    { key: 'summary', label: '📄 需求書' },
-    { key: 'design', label: '📐 設計＋平面圖' },
+    { key: 'wizard', label: '📋 房間問卷', grow: 1 },
+    { key: 'summary', label: '📄 需求書', grow: 1 },
+    { key: 'design', label: '📐 設計＋平面圖', grow: 1.6 },   // 字最長，分多啲位，唔好斷行
   ];
   return `<div class="rowflex" style="gap:6px;margin-bottom:8px">
-    ${tabs.map(t => `<button class="btn sm ${state.needsView === t.key ? '' : 'gh'}" data-view="${t.key}" style="flex:1">${t.label}</button>`).join('')}
+    ${tabs.map(t => `<button class="btn sm viewtab ${state.needsView === t.key ? '' : 'gh'}" data-view="${t.key}" style="flex:${t.grow} 1 0">${t.label}</button>`).join('')}
   </div>`;
 }
 
@@ -850,7 +850,7 @@ function renderNeedsWizard(project) {
         <button class="iconbtn" data-delroom="${room.id}" style="float:right" title="刪除呢間房">🗑️ 刪除房間</button>
       </div>
     </div>
-    <div class="note good">✨ 逐間房行完 4 步之後，撳上面「需求書＋掣位清單」自動生成兩份文件，可以複製／下載 .txt／print。</div>
+    <div class="note good">✨ 逐間房行完 4 步之後，撳上面「📄 需求書」自動生成需求書同掣位清單兩份文件，可以複製／下載 .txt／print。</div>
   `;
 }
 

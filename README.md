@@ -44,6 +44,7 @@ Sign-in is Google only. Calculators and guides stay public; anything that saves 
 
 ```
 index.html       public landing page and calculators
+og.png           social preview image (1200×630) for link sharing
 app.html         signed-in app (hash-routed tabs)
 js/supabase.js   client setup (publishable key only)
 js/auth.js       Google sign-in and session guard

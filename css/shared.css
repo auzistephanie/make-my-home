@@ -451,3 +451,5 @@ summary{padding-block:10px}
 .stageresponsibility a::after{content:"";position:absolute;inset:-14px 0}
 .loginback{font-size:.82rem;color:var(--green);font-weight:600;display:inline-block;padding:12px 8px}
 [hidden]{display:none!important}
+/* 規劃頁三個分頁掣：窄屏唔斷行，橫向 padding 收窄 */
+.btn.sm.viewtab{white-space:nowrap;padding-left:8px;padding-right:8px}

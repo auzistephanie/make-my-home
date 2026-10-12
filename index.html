@@ -6,6 +6,17 @@
 <title>裝修無伏 / MakeMyHome — 香港裝修新手嘅全程管家</title>
 <meta name="description" content="要預幾耐、點同設計師傾、點樣驗收 — 免費工期／預算計算器、裝修旅程地圖、伏位警示、術語字典，唔使登入都用得。">
 <link rel="icon" href="data:,">
+<link rel="canonical" href="https://make-my-home-xi.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_HK">
+<meta property="og:url" content="https://make-my-home-xi.vercel.app/">
+<meta property="og:title" content="裝修無伏 MakeMyHome — 香港裝修新手嘅全程管家">
+<meta property="og:description" content="要預幾耐、點同設計師傾、點樣驗收。免費工期／預算計算器、報價比較、施工驗收，唔使登入都用得。">
+<meta property="og:image" content="https://make-my-home-xi.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="裝修無伏 MakeMyHome — 香港裝修新手嘅全程管家">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="css/shared.css">
 </head>
 <body>
@@ -334,7 +345,7 @@ document.getElementById('b-go').addEventListener('click', () => {
   const size = sizeRes.value;
   const g = GRADES[document.getElementById('b-grade').value];
   const lo = size * g[0], hi = size * g[1];
-  const f = n => n >= 10000 ? '$' + (n / 10000).toFixed(0) + '萬' : '$' + n.toLocaleString();
+  const f = n => n >= 10000 ? '$' + Math.round(n / 10000).toLocaleString('en-US') + '萬' : '$' + n.toLocaleString();   // $9,000萬（唔係 $9000萬）
   document.getElementById('b-total').textContent = f(lo) + ' – ' + f(hi);
   document.getElementById('b-buffer').textContent = '（即約 ' + f(lo * 0.1) + ' – ' + f(hi * 0.15) + '）';
   // feed calcState — budget_cap uses the range midpoint, rounded to the nearest $1,000
