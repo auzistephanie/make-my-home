@@ -1498,14 +1498,28 @@ function quoteItemRowHtml(it) {
   return `<div class="lirow"><div class="lirowline"><input type="text" data-li-name aria-label="項目名稱" placeholder="項目（例：睡房訂造櫃）" value="${esc(it.name || '')}"><input type="text" inputmode="numeric" data-li-amount aria-label="金額（$）" placeholder="金額" value="${it.amount === '' || it.amount === null || it.amount === undefined ? '' : esc(String(it.amount))}"><button type="button" class="iconbtn" data-li-del aria-label="刪除此項">🗑️</button></div><small class="lierr" style="color:var(--danger)"></small></div>`;
 }
 
-// 收集＋驗證明細；回傳 { items, total, ok }。留空／非數字一律 inline 報錯，唔會當 0。
-function collectQuoteItems(untouchedOk) {
+// 大類金額合計（只計正整數）
+function breakdownSum(b) {
+  return Object.values(b || {}).reduce((a, v) => a + (Number.isInteger(+v) && +v > 0 ? +v : 0), 0);
+}
+// 「舊報價」＝冇明細，而且總價同大類金額合計對唔上（例如當時手打總價）：編輯時沿用原有總價，唔好靜靜改數。
+// 淨係填大類金額嘅報價（總價＝大類合計）唔算舊報價，改大類金額總價會跟住變。
+function isLegacyQuote(q) {
+  if (!q || quoteLineItems(q)) return false;
+  const bs = breakdownSum(q.breakdown);
+  return !(bs > 0 && bs === +q.total);
+}
+
+// 收集＋驗證明細；回傳 { items, total, ok }。填咗一半／非數字一律 inline 報錯，唔會當 0。
+// 完全空白嘅行直接略過（唔再當錯誤）；全部都空白 → items: null，由呼叫方決定用大類金額定報錯。
+function collectQuoteItems() {
   const rows = [...appEl.querySelectorAll('#q-items .lirow')];
   const raw = rows.map(r => ({ row: r, name: r.querySelector('[data-li-name]').value.trim(), amount: r.querySelector('[data-li-amount]').value.trim().replace(/,/g, '') }));
   rows.forEach(r => { r.querySelector('.lierr').textContent = ''; });
-  if (untouchedOk && raw.every(r => !r.name && !r.amount)) return { items: null, ok: true };
+  if (raw.every(r => !r.name && !r.amount)) return { items: null, ok: true };
   let ok = true; const items = [];
   raw.forEach(r => {
+    if (!r.name && !r.amount) return;   // 空白行略過
     const err = r.row.querySelector('.lierr');
     if (!r.name) { err.textContent = '請填項目名稱（或刪除此行）'; ok = false; return; }
     if (!r.amount) { err.textContent = '請填金額，唔可以留空'; ok = false; return; }
@@ -1518,7 +1532,7 @@ function collectQuoteItems(untouchedOk) {
 function quoteFormHtml(editing, missingScopes) {
   const q = editing || { breakdown: {}, flags: {} };
   const items = quoteLineItems(q);
-  const legacy = !!editing && !items;
+  const legacy = isLegacyQuote(editing);
   const breakdownInputs = BREAKDOWN_CATS.map(c => `
     <div><label class="f" for="q-bd-${c.key}">${c.label}</label><input type="number" id="q-bd-${c.key}" data-bd="${c.key}" value="${(q.breakdown && q.breakdown[c.key]) || ''}" min="0"></div>`).join('');
   const flagChecks = FLAGS.map(f => `
@@ -1529,13 +1543,16 @@ function quoteFormHtml(editing, missingScopes) {
     <label class="f" for="q-company">公司名稱</label>
     <input type="text" id="q-company" value="${esc(q.company || '')}" placeholder="例：安居工程">
     <div class="f" id="q-items-label">工程項目（總價 = 明細合計）</div>
+    <p class="dt">兩個方法揀一個就得：逐項填明細（總價自動合計），或者淨係填下面嘅「大類金額」（總價 = 大類合計）。兩樣都填嘅話，總價用明細合計；對比表嘅分類睇「大類金額」。</p>
     ${legacy ? '<div class="note" id="q-legacy-note">呢份舊報價未有工程明細，總價暫時沿用原有金額。請補返項目同金額；補完之後總價會自動等於明細合計。</div>' : ''}
     <div id="q-items" role="group" aria-labelledby="q-items-label">${(items && items.length ? items : [{ name: '', amount: '' }]).map(it => quoteItemRowHtml(it)).join('')}</div>
     <button type="button" class="btn sm gh" id="q-additem">＋ 加項目</button>
     <label class="f" for="q-total">總價（$）— 自動計算，唔使輸入</label>
     <input type="text" id="q-total" readonly value="${q.total || ''}" placeholder="$0">
+    <div class="dt" id="q-total-note"></div>
     <div class="f" id="q-bd-label">大類金額</div>
     <div class="grid2" role="group" aria-labelledby="q-bd-label">${breakdownInputs}</div>
+    <div class="dt" id="q-mismatch" style="color:var(--accent)"></div>
     <div class="f" id="q-flags-label">十條紅旗（剔咗代表呢間公司有呢個問題；⚠ 係重點扣分項）</div>
     <div class="flaglist" role="group" aria-labelledby="q-flags-label">${flagChecks}</div>
     <label class="f" for="q-file">上載報價單檔案（PDF／相片，可選）</label>
@@ -1617,12 +1634,24 @@ function attachQuotesEvents(project, contract) {
 
   const itemsBox = document.getElementById('q-items');
   if (itemsBox) {
+    const bdInputs = [...document.querySelectorAll('[data-bd]')];
     const refreshTotal = () => {
-      const sum = [...itemsBox.querySelectorAll('[data-li-amount]')].reduce((a, el) => { const v = el.value.trim().replace(/,/g, ''); return /^\d+$/.test(v) ? a + +v : a; }, 0);
+      const itemsSum = [...itemsBox.querySelectorAll('[data-li-amount]')].reduce((a, el) => { const v = el.value.trim().replace(/,/g, ''); return /^\d+$/.test(v) ? a + +v : a; }, 0);
       const anyEntered = [...itemsBox.querySelectorAll('[data-li-amount],[data-li-name]')].some(el => el.value.trim());
+      const bdTotal = bdInputs.reduce((a, el) => { const v = el.value.trim(); return /^\d+$/.test(v) ? a + +v : a; }, 0);
       const cur = state.quotes.find(q => q.id === state.editingQuoteId);
-      document.getElementById('q-total').value = (!anyEntered && cur && !quoteLineItems(cur)) ? (cur.total || '') : sum;
+      let total, note = '';
+      if (anyEntered) { total = itemsSum; note = '來源：工程明細合計'; }
+      else if (isLegacyQuote(cur)) { total = cur.total || ''; note = cur.total ? '來源：原有總價（未有明細）' : ''; }
+      else if (bdTotal > 0) { total = bdTotal; note = '來源：大類金額合計'; }
+      else { total = 0; }
+      document.getElementById('q-total').value = total;
+      document.getElementById('q-total-note').textContent = note;
+      document.getElementById('q-mismatch').textContent = (anyEntered && itemsSum > 0 && bdTotal > 0 && itemsSum !== bdTotal)
+        ? `明細合計 ${money(itemsSum)}，大類金額合計 ${money(bdTotal)}，兩者唔一樣。總價用明細合計，對比表嘅分類用大類金額。` : '';
     };
+    bdInputs.forEach(el => el.addEventListener('input', () => { clearFieldError(el); refreshTotal(); }));
+    if (state.editingQuoteId) refreshTotal();   // 編輯：即刻顯示總價來源；新增：留空，等用家填
     itemsBox.addEventListener('input', (ev) => { const e = ev.target.closest('.lirow'); if (e) e.querySelector('.lierr').textContent = ''; refreshTotal(); });
     itemsBox.addEventListener('click', (ev) => {
       if (!ev.target.closest('[data-li-del]')) return;
@@ -1640,19 +1669,33 @@ function attachQuotesEvents(project, contract) {
   if (saveBtn) saveBtn.addEventListener('click', async () => {
     const company = document.getElementById('q-company').value.trim();
     if (!company) { toast('請輸入公司名稱', true); return; }
-    const breakdown = {};
-    appEl.querySelectorAll('[data-bd]').forEach(el => { breakdown[el.dataset.bd] = el.value ? +el.value : null; });
+    // 大類金額：非負整數、有上限；0／留空當未填
+    const breakdown = {}; let bdBad = null;
+    BREAKDOWN_CATS.forEach(c => {
+      const el = document.getElementById('q-bd-' + c.key);
+      const r = readNumber(el, { ...LIMITS.money, label: c.label });
+      if (!r) { if (!bdBad) bdBad = el; return; }
+      breakdown[c.key] = r.value || null;
+    });
     const current = state.quotes.find(q => q.id === state.editingQuoteId);
     const flags = Object.assign({}, (current && current.flags) || {});
     appEl.querySelectorAll('[data-flag]').forEach(el => { flags[el.dataset.flag] = el.checked; });
     const quoteFor = document.getElementById('q-quote-for');
     if (quoteFor) flags._quote_for = quoteFor.value || null;
-    const legacyEdit = !!current && !quoteLineItems(current);
-    const li = collectQuoteItems(legacyEdit);
+    const legacyEdit = isLegacyQuote(current);
+    const li = collectQuoteItems();
     if (!li.ok) { toast('工程明細有錯，請睇紅色提示', true); return; }
+    if (bdBad) { bdBad.focus(); return; }
+    const bdTotal = breakdownSum(breakdown);
     let total;
-    if (li.items) { flags._line_items = li.items; total = li.total; }
-    else total = current.total || null;   // 舊報價未補明細：沿用原有總價
+    if (li.items) { flags._line_items = li.items; total = li.total; }          // 有明細：總價 = 明細合計
+    else if (legacyEdit) total = current.total || null;                          // 舊報價未補明細：沿用原有總價
+    else if (bdTotal > 0) { delete flags._line_items; total = bdTotal; }         // 淨係填大類金額：總價 = 大類合計
+    else {
+      const firstErr = appEl.querySelector('#q-items .lierr');
+      if (firstErr) firstErr.textContent = '請填工程明細（項目＋金額），或者喺下面填大類金額';
+      toast('請填工程明細或大類金額', true); return;
+    }
     const score = computeQuoteScore(flags);
     const fields = { company, total, breakdown, flags, score };
     const fileInput = document.getElementById('q-file');

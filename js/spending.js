@@ -62,7 +62,7 @@ async function renderSpending() {
     </div>
     ${extraQuotes.length ? `<div class="card"><h3>額外工程明細</h3>${extraQuotes.map(q => {
       const items = quoteLineItems(q);
-      return `<div class="xgroup"><div class="xhead"><span>${esc(q.company)}</span><b>${money(q.total)}</b></div>${items ? items.map(it => `<div class="xitem"><span>${esc(it.name)}</span><span>${money(it.amount)}</span></div>`).join('') : '<div class="xitem muted">未有明細（舊報價，只有總價）</div>'}</div>`;
+      return `<div class="xgroup"><div class="xhead"><span>${esc(q.company)}</span><b>${money(q.total)}</b></div>${items ? items.map(it => `<div class="xitem"><span>${esc(it.name)}</span><span>${money(it.amount)}</span></div>`).join('') : '<div class="xitem muted">未有明細，只有總價</div>'}</div>`;
     }).join('')}</div>` : ''}`;
   appEl.innerHTML = chromeShell('spending', body, projectRowHtml());
   attachChromeEvents();
