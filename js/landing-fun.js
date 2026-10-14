@@ -23,6 +23,7 @@
     if (!root) return;
     const world = root.querySelector('.world'), hills = root.querySelector('.hills'), stick = root.querySelector('.stick'), runway = root.querySelector('.runway');
     const W = 4900;
+    const SCREENS = 4; // 對應 css #fun-a .runway { height: 400vh }
     const items = [
       ['lamp', 680], ['bld', 'tonglau', 920, .62], ['fu', 'price', 1160], ['lamp', 1420],
       ['bld', 'villagehouse', 1720, .5], ['fu', 'ghost', 2000], ['lamp', 2250],
@@ -51,7 +52,28 @@
     });
     const slots = [...root.querySelectorAll('.hud .slots i')], tipEl = root.querySelector('.tip'), bubble = root.querySelector('.bubble'),
           title = root.querySelector('.title'), hint = root.querySelector('.scrollhint'), mascot = root.querySelector('.mascot'),
-          end = root.querySelector('.endcard'), hud = root.querySelector('.hud'), skip = root.querySelector('.skip');
+          end = root.querySelector('.endcard'), hud = root.querySelector('.hud'), skip = root.querySelector('.skip'),
+          walkprog = root.querySelector('.walkprog'), replay = end.querySelector('.replay');
+    const againBtn = end.querySelector('.again'), missedBtn = end.querySelector('.missed');
+    function scrollToP(p){
+      const vh = innerHeight || 1;
+      const top = runway.getBoundingClientRect().top + window.scrollY;
+      const max = Math.max(1, runway.offsetHeight - vh);
+      window.scrollTo({ top: top + Math.min(1, Math.max(0, p)) * max, behavior: 'auto' });
+      render(true);
+    }
+    function pForFu(f){
+      const vw = innerWidth || 1;
+      const travel = Math.max(1, W - vw);
+      return Math.min(0.92, Math.max(0, (f.x - Math.min(vw * 0.62, vw - 80)) / travel));
+    }
+    againBtn.addEventListener('click', () => scrollToP(0));
+    missedBtn.addEventListener('click', () => {
+      const f = fus.find(o => !o.done);
+      if (!f) { scrollToP(0); return; }
+      scrollToP(pForFu(f));
+      f.el.focus({ preventScroll: true });
+    });
     let tipT;
     function tip(f){
       tipEl.querySelector('b').textContent = '✓ 拆咗「' + f.name + '」';
@@ -77,20 +99,29 @@
       const x = -p * (W - vw);
       world.style.transform = `translate3d(${x.toFixed(1)}px,0,0)`;
       hills.style.transform = `translate3d(${(x * .25).toFixed(1)}px,0,0)`;
-      fus.forEach(f => { const sx = f.x + x; f.el.classList.toggle('up', !f.done && sx < vw * .95 && sx > vw * .3); });
+      fus.forEach(f => { const sx = f.x + x; f.el.classList.toggle('up', !f.done && sx < vw * 1.05 && sx > vw * .15); });
       const n = busted.size;
+      const step = Math.min(SCREENS, Math.floor(p * SCREENS) + 1);
+      const walkLabel = '已行 ' + step + '／' + SCREENS;
+      if (walkprog.getAttribute('aria-label') !== walkLabel) {
+        walkprog.setAttribute('aria-label', walkLabel);
+        walkprog.innerHTML = '已行 <b>' + step + '</b>／' + SCREENS;
+      }
       title.style.opacity = Math.max(0, 1 - p * 12);
       hud.style.opacity = p > .06 ? 1 : 0;           // 標題淡出之後先出計分，唔好疊埋
-      hint.style.opacity = p < .02 ? 1 : 0;
-      skip.classList.toggle('off', p < .06 || p > .95);
+      hint.style.opacity = p < .12 ? 1 : 0;
+      const nearEnd = p > .96;
+      skip.classList.toggle('off', nearEnd);
+      walkprog.classList.toggle('off', nearEnd);
       const atEnd = p > .97;
       bubble.style.opacity = (p < .04 || atEnd) ? 1 : 0;
       const state = (atEnd ? 'e' : 's') + n;
       if (state !== lastState) {
         lastState = state;
-        bubble.textContent = atEnd ? (n === 4 ? '全部拆晒！我唔驚啦 💪' : '仲有 ' + (4 - n) + ' 隻伏未拆…返轉頭搵下？') : '第一次裝修…好驚中伏 😰 捲落去陪我行！';
+        bubble.textContent = atEnd ? (n === 4 ? '全部拆晒！我唔驚啦 💪' : '仲有 ' + (4 - n) + ' 隻伏未拆。撳「睇未拆嘅伏」去睇。') : '好驚中伏 😰 向下捲＝沿街向前行，見到伏就撳！';
         end.querySelector('h2').textContent = n === 4 ? '4 隻伏全部拆晒 🎉' : '拆咗 ' + n + '／4 隻伏';
-        end.querySelector('p').textContent = n === 4 ? '真裝修仲有好多伏。用「裝修無伏」逐步規劃、比較報價、分段驗收。' : '漏咗嘅伏，真裝修會搵返你。等我哋幫你逐個避開。';
+        end.querySelector('p').textContent = n === 4 ? '真裝修仲有好多伏。用「裝修無伏」逐步規劃、比較報價、分段驗收。' : '未拆嘅伏撳「睇未拆嘅伏」直接去嗰段，或者「再行一次」由街頭開始。';
+        replay.hidden = n === 4;
       }
       end.classList.toggle('show', p > .985);
       if (!RM && Math.abs(p - lastP) > .0005) { mascot.classList.add('walk'); clearTimeout(walkT); walkT = setTimeout(() => mascot.classList.remove('walk'), 160); }
