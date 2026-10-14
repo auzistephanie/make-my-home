@@ -118,7 +118,7 @@
       const state = (atEnd ? 'e' : 's') + n;
       if (state !== lastState) {
         lastState = state;
-        bubble.textContent = atEnd ? (n === 4 ? '全部拆晒！我唔驚啦 💪' : '仲有 ' + (4 - n) + ' 隻伏未拆。撳「睇未拆嘅伏」去睇。') : '好驚中伏 😰 向下捲＝沿街向前行，見到伏就撳！';
+        bubble.textContent = atEnd ? (n === 4 ? '全部拆晒！我唔驚啦 💪' : '仲有 ' + (4 - n) + ' 隻伏未拆。撳「睇未拆嘅伏」去睇。') : '好驚中伏 😰 沿街向前行，見到伏就撳！';
         end.querySelector('h2').textContent = n === 4 ? '4 隻伏全部拆晒 🎉' : '拆咗 ' + n + '／4 隻伏';
         end.querySelector('p').textContent = n === 4 ? '真裝修仲有好多伏。用「裝修無伏」逐步規劃、比較報價、分段驗收。' : '未拆嘅伏撳「睇未拆嘅伏」直接去嗰段，或者「再行一次」由街頭開始。';
         replay.hidden = n === 4;
